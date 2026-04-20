@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Clock, Send, MessageSquare, Trash2 } from "lucide-react";
@@ -10,26 +10,27 @@ import type { Profile } from "@/lib/types";
 
 type Category = "כללי" | "מקצועי" | "חברתי" | "ציוד ומילואים";
 
-interface MockReply {
+interface Reply {
   id: string;
+  author_id?: string;
   author: string;
   serviceYears: string;
   content: string;
   time: string;
 }
 
-interface MockPost {
+interface ForumPost {
   id: string;
+  author_id?: string;
   title: string;
   category: Category;
   author: string;
   serviceYears: string;
   content: string;
   time: string;
-  replies: MockReply[];
 }
 
-const MOCK_POSTS: Record<string, MockPost> = {
+const MOCK_POSTS: Record<string, ForumPost & { replies: Reply[] }> = {
   "1": {
     id: "1",
     title: "שאלה לגבי הטבות נכים — מישהו עבר את התהליך?",
@@ -126,20 +127,27 @@ const CATEGORY_COLORS: Record<string, string> = {
 function ForumPostContent() {
   const params = useParams();
   const router = useRouter();
-  const [post, setPost] = useState<MockPost | null>(null);
-  const [replies, setReplies] = useState<MockReply[]>([]);
+  const [post, setPost] = useState<ForumPost | null>(null);
+  const [replies, setReplies] = useState<Reply[]>([]);
   const [newReply, setNewReply] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deletingReply, setDeletingReply] = useState<string | null>(null);
+  const [deletingPost, setDeletingPost] = useState(false);
   const [currentUser, setCurrentUser] = useState<Partial<Profile> | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isMockData, setIsMockData] = useState(false);
   const supabase = createClient();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
     const id = params.id as string;
 
-    // Try Supabase first
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setCurrentUserId(user.id);
         const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
         setCurrentUser(profile);
       }
@@ -160,28 +168,20 @@ function ForumPostContent() {
         const authorProfile = Array.isArray(dbPost.author) ? dbPost.author[0] : dbPost.author;
         setPost({
           id: dbPost.id,
+          author_id: dbPost.author_id,
           title: dbPost.title,
           category: dbPost.category as Category,
           author: authorProfile?.full_name || "חבר",
           serviceYears: authorProfile?.service_years || "",
           content: dbPost.content,
           time: new Date(dbPost.created_at).toLocaleDateString("he-IL"),
-          replies: (dbReplies || []).map((r) => {
-            const rAuthor = Array.isArray(r.author) ? r.author[0] : r.author;
-            return {
-              id: r.id,
-              author: rAuthor?.full_name || "חבר",
-              serviceYears: rAuthor?.service_years || "",
-              content: r.content,
-              time: new Date(r.created_at).toLocaleDateString("he-IL"),
-            };
-          }),
         });
         setReplies(
           (dbReplies || []).map((r) => {
             const rAuthor = Array.isArray(r.author) ? r.author[0] : r.author;
             return {
               id: r.id,
+              author_id: r.author_id,
               author: rAuthor?.full_name || "חבר",
               serviceYears: rAuthor?.service_years || "",
               content: r.content,
@@ -189,6 +189,46 @@ function ForumPostContent() {
             };
           })
         );
+
+        // Subscribe to real-time reply inserts
+        channelRef.current = supabase
+          .channel(`forum_replies:${id}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "forum_replies", filter: `post_id=eq.${id}` },
+            async (payload) => {
+              const r = payload.new as { id: string; author_id: string; content: string; created_at: string };
+              const { data: rProfile } = await supabase
+                .from("profiles")
+                .select("full_name, service_years")
+                .eq("id", r.author_id)
+                .single();
+              setReplies((prev) => {
+                if (prev.some((x) => x.id === r.id)) return prev;
+                return [
+                  ...prev,
+                  {
+                    id: r.id,
+                    author_id: r.author_id,
+                    author: rProfile?.full_name || "חבר",
+                    serviceYears: rProfile?.service_years || "",
+                    content: r.content,
+                    time: new Date(r.created_at).toLocaleDateString("he-IL"),
+                  },
+                ];
+              });
+            }
+          )
+          .on(
+            "postgres_changes",
+            { event: "DELETE", schema: "public", table: "forum_replies", filter: `post_id=eq.${id}` },
+            (payload) => {
+              const deleted = payload.old as { id: string };
+              setReplies((prev) => prev.filter((r) => r.id !== deleted.id));
+            }
+          )
+          .subscribe();
+
         return;
       }
 
@@ -198,10 +238,17 @@ function ForumPostContent() {
         router.replace("/forum");
         return;
       }
+      setIsMockData(true);
       setPost(mockPost);
       setReplies(mockPost.replies);
     }
     load();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
   }, [params.id]);
 
   async function handleReply(e: React.FormEvent) {
@@ -212,35 +259,42 @@ function ForumPostContent() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (user) {
-        const { data: inserted } = await supabase
+      if (user && !isMockData) {
+        await supabase
           .from("forum_replies")
-          .insert({ post_id: post.id, author_id: user.id, content: newReply.trim() })
-          .select("id, created_at")
-          .single();
-
-        const newR: MockReply = {
-          id: inserted?.id || `new-${Date.now()}`,
-          author: currentUser?.full_name || "חבר",
-          serviceYears: currentUser?.service_years || "",
-          content: newReply.trim(),
-          time: "עכשיו",
-        };
-        setReplies((prev) => [...prev, newR]);
+          .insert({ post_id: post.id, author_id: user.id, content: newReply.trim() });
+        // Real-time channel will append the reply
       } else {
-        const newR: MockReply = {
-          id: `new-${Date.now()}`,
-          author: currentUser?.full_name || "חבר",
-          serviceYears: currentUser?.service_years || "",
-          content: newReply.trim(),
-          time: "עכשיו",
-        };
-        setReplies((prev) => [...prev, newR]);
+        setReplies((prev) => [
+          ...prev,
+          {
+            id: `new-${Date.now()}`,
+            author_id: currentUserId || undefined,
+            author: currentUser?.full_name || "חבר",
+            serviceYears: currentUser?.service_years || "",
+            content: newReply.trim(),
+            time: "עכשיו",
+          },
+        ]);
       }
     } finally {
       setNewReply("");
       setSubmitting(false);
     }
+  }
+
+  async function handleDeletePost() {
+    if (!post || !window.confirm("למחוק את הפוסט? הפעולה אינה הפיכה.")) return;
+    setDeletingPost(true);
+    await supabase.from("forum_posts").delete().eq("id", post.id);
+    router.replace("/forum");
+  }
+
+  async function handleDeleteReply(replyId: string) {
+    setDeletingReply(replyId);
+    await supabase.from("forum_replies").delete().eq("id", replyId);
+    setReplies((prev) => prev.filter((r) => r.id !== replyId));
+    setDeletingReply(null);
   }
 
   if (!post) {
@@ -250,6 +304,8 @@ function ForumPostContent() {
       </div>
     );
   }
+
+  const canDeletePost = !isMockData && (isAdmin || post.author_id === currentUserId);
 
   return (
     <div className="min-h-screen bg-gray-light" style={{ paddingTop: "64px" }}>
@@ -265,7 +321,23 @@ function ForumPostContent() {
               {post.category}
             </span>
           </div>
-          <h1 className="font-rubik font-black text-2xl sm:text-3xl text-white mb-3">{post.title}</h1>
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="font-rubik font-black text-2xl sm:text-3xl text-white mb-3">{post.title}</h1>
+            {canDeletePost && (
+              <button
+                onClick={handleDeletePost}
+                disabled={deletingPost}
+                title="מחק פוסט"
+                className="shrink-0 p-2 rounded-lg text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50"
+              >
+                {deletingPost ? (
+                  <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-3 text-sm text-gray-400">
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-green-mid flex items-center justify-center text-white text-xs font-bold">
@@ -306,31 +378,50 @@ function ForumPostContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {replies.map((reply, index) => (
-                <div
-                  key={reply.id}
-                  className="bg-white rounded-2xl shadow-sm p-5 border-r-4 border-r-green-pale"
-                >
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-green-pale flex items-center justify-center text-green-dark text-sm font-bold">
-                        {reply.author[0]}
+              {replies.map((reply) => {
+                const canDeleteReply = !isMockData && (isAdmin || reply.author_id === currentUserId);
+                return (
+                  <div
+                    key={reply.id}
+                    className="bg-white rounded-2xl shadow-sm p-5 border-r-4 border-r-green-pale"
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-green-pale flex items-center justify-center text-green-dark text-sm font-bold">
+                          {reply.author[0]}
+                        </div>
+                        <div>
+                          <span className="text-sm font-semibold text-gray-900">{reply.author}</span>
+                          {reply.serviceYears && (
+                            <span className="text-xs text-gray-400 mr-1.5">| {reply.serviceYears}</span>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-900">{reply.author}</span>
-                        {reply.serviceYears && (
-                          <span className="text-xs text-gray-400 mr-1.5">| {reply.serviceYears}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <Clock size={10} />
+                          {reply.time}
+                        </span>
+                        {canDeleteReply && (
+                          <button
+                            onClick={() => handleDeleteReply(reply.id)}
+                            disabled={deletingReply === reply.id}
+                            title="מחק תגובה"
+                            className="p-1 rounded text-gray-300 hover:text-red-400 transition-colors disabled:opacity-50"
+                          >
+                            {deletingReply === reply.id ? (
+                              <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <Trash2 size={13} />
+                            )}
+                          </button>
                         )}
                       </div>
                     </div>
-                    <span className="text-xs text-gray-400 flex items-center gap-1 shrink-0">
-                      <Clock size={10} />
-                      {reply.time}
-                    </span>
+                    <p className="text-gray-700 text-sm leading-relaxed">{reply.content}</p>
                   </div>
-                  <p className="text-gray-700 text-sm leading-relaxed">{reply.content}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import SectionTitle from "@/components/ui/SectionTitle";
 import AnimatedStats from "@/components/ui/AnimatedStats";
+import { createClient } from "@/lib/supabase/server";
+import type { Event } from "@/lib/types";
 
 const stats = [
   { value: "14+", label: "שנות פעילות" },
@@ -51,34 +53,53 @@ const partners = [
   { seed: "partner5", name: "שותף 5" },
 ];
 
-const mockEvents = [
+const FALLBACK_EVENTS: Event[] = [
   {
     id: "1",
     title: "טקס יום הזיכרון השנתי",
-    date: "2025-05-05T18:00:00",
+    date: "2026-05-05T18:00:00",
     location: "הר הרצל, ירושלים",
     description: "טקס זיכרון שנתי לנופלי סיירת נח\"ל. הכניסה חופשית לכלל הציבור.",
     is_public: true,
+    created_at: new Date().toISOString(),
   },
   {
     id: "2",
     title: "מפגש בוגרים — תל אביב",
-    date: "2025-05-20T19:30:00",
+    date: "2026-05-20T19:30:00",
     location: "תל אביב",
     description: "ערב בוגרים עם נאומים, הצגת פרויקטים חדשים והתחדשות.",
     is_public: false,
+    created_at: new Date().toISOString(),
   },
   {
     id: "3",
     title: "ריצת סיום מחזור — ירושלים",
-    date: "2025-06-12T08:00:00",
+    date: "2026-06-12T08:00:00",
     location: "ירושלים",
     description: "ריצה משותפת לציון סיום מחזור בצבא, פתוחה לכל הבוגרים.",
     is_public: true,
+    created_at: new Date().toISOString(),
   },
 ];
 
-export default function HomePage() {
+async function getUpcomingEvents(): Promise<Event[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("events")
+      .select("*")
+      .gte("date", new Date().toISOString())
+      .order("date", { ascending: true })
+      .limit(3);
+    return data && data.length > 0 ? data : FALLBACK_EVENTS;
+  } catch {
+    return FALLBACK_EVENTS;
+  }
+}
+
+export default async function HomePage() {
+  const upcomingEvents = await getUpcomingEvents();
   return (
     <>
       {/* Hero */}
@@ -199,7 +220,7 @@ export default function HomePage() {
             subtitle="הישארו מעודכנים בפעילות העמותה והקהילה"
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {mockEvents.map((event) => {
+            {upcomingEvents.map((event) => {
               const date = new Date(event.date);
               return (
                 <div
