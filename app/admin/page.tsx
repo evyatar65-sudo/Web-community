@@ -470,17 +470,21 @@ function DonationsTab() {
 
 function AdminContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
-  const [stats, setStats] = useState({ pending: 0, approved: 0, total: 0 });
+  const [stats, setStats] = useState({ pending: 0, approved: 0, total: 0, pendingArchive: 0 });
   const supabase = createClient();
 
   useEffect(() => {
     async function loadStats() {
-      const { data } = await supabase.from("profiles").select("status");
-      if (data) {
+      const [{ data: profiles }, { count: archiveCount }] = await Promise.all([
+        supabase.from("profiles").select("status"),
+        supabase.from("archive_items").select("*", { count: "exact", head: true }).eq("is_approved", false),
+      ]);
+      if (profiles) {
         setStats({
-          pending: data.filter((p) => p.status === "pending").length,
-          approved: data.filter((p) => p.status === "approved").length,
-          total: data.length,
+          pending: profiles.filter((p) => p.status === "pending").length,
+          approved: profiles.filter((p) => p.status === "approved").length,
+          total: profiles.length,
+          pendingArchive: archiveCount || 0,
         });
       }
     }
@@ -540,6 +544,11 @@ function AdminContent() {
                     {stats.pending}
                   </span>
                 )}
+                {tab === "archive" && stats.pendingArchive > 0 && (
+                  <span className="bg-orange-400 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {stats.pendingArchive}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -566,6 +575,11 @@ function AdminContent() {
                     {tab === "users" && stats.pending > 0 && (
                       <span className="mr-auto bg-yellow-400 text-black text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
                         {stats.pending}
+                      </span>
+                    )}
+                    {tab === "archive" && stats.pendingArchive > 0 && (
+                      <span className="mr-auto bg-orange-400 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                        {stats.pendingArchive}
                       </span>
                     )}
                   </button>
