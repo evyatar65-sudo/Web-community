@@ -47,8 +47,8 @@ function UploadModal({ onClose }: { onClose: () => void }) {
       if (file) {
         const ext = file.name.split(".").pop();
         const path = `archive/${Date.now()}.${ext}`;
-        await supabase.storage.from("archive").upload(path, file);
-        const { data } = supabase.storage.from("archive").getPublicUrl(path);
+        await supabase.storage.from("uploads").upload(path, file);
+        const { data } = supabase.storage.from("uploads").getPublicUrl(path);
         file_url = data.publicUrl;
       }
       const { data: { user } } = await supabase.auth.getUser();

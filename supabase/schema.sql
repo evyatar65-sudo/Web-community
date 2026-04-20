@@ -179,6 +179,16 @@ CREATE POLICY "Approved members can create posts"
     AND EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved')
   );
 
+CREATE POLICY "Authors can delete their own posts"
+  ON forum_posts FOR DELETE
+  USING (auth.uid() = author_id);
+
+CREATE POLICY "Admins can delete any post"
+  ON forum_posts FOR DELETE
+  USING (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
 CREATE POLICY "Approved members can view replies"
   ON forum_replies FOR SELECT
   USING (
@@ -191,6 +201,10 @@ CREATE POLICY "Approved members can create replies"
     auth.uid() = author_id
     AND EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved')
   );
+
+CREATE POLICY "Authors can delete their own replies"
+  ON forum_replies FOR DELETE
+  USING (auth.uid() = author_id);
 
 -- ARCHIVE policies
 CREATE POLICY "Approved members can view approved archive items"
@@ -228,16 +242,73 @@ CREATE POLICY "Admins can manage benefits"
   );
 
 -- ============================================================
--- Storage Buckets (run in Supabase Dashboard > Storage)
+-- Indexes (performance)
 -- ============================================================
--- INSERT INTO storage.buckets (id, name, public) VALUES ('uploads', 'uploads', false);
 
--- Storage RLS for uploads bucket
--- CREATE POLICY "Approved members can upload" ON storage.objects FOR INSERT
---   WITH CHECK (bucket_id = 'uploads' AND EXISTS (
---     SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved'
---   ));
--- CREATE POLICY "Approved members can view uploads" ON storage.objects FOR SELECT
---   USING (bucket_id = 'uploads' AND EXISTS (
---     SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved'
---   ));
+CREATE INDEX IF NOT EXISTS idx_profiles_status ON profiles(status);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
+CREATE INDEX IF NOT EXISTS idx_events_date ON events(date);
+CREATE INDEX IF NOT EXISTS idx_rsvps_event ON rsvps(event_id);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_author ON forum_posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_category ON forum_posts(category);
+CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id);
+CREATE INDEX IF NOT EXISTS idx_archive_approved ON archive_items(is_approved);
+
+-- ============================================================
+-- Storage Buckets
+-- ============================================================
+-- Run this in the Supabase SQL editor to create the storage bucket:
+--
+-- INSERT INTO storage.buckets (id, name, public)
+--   VALUES ('uploads', 'uploads', true)
+--   ON CONFLICT (id) DO NOTHING;
+--
+-- Storage objects:
+--   uploads/avatars/<user_id>.<ext>   — profile photos
+--   uploads/archive/<timestamp>.<ext> — archive items
+
+-- Storage RLS
+CREATE POLICY "Approved members can upload files"
+  ON storage.objects FOR INSERT
+  WITH CHECK (
+    bucket_id = 'uploads'
+    AND EXISTS (
+      SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved'
+    )
+  );
+
+CREATE POLICY "Approved members can view uploads"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'uploads'
+    AND EXISTS (
+      SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved'
+    )
+  );
+
+CREATE POLICY "Users can update their own uploads"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'uploads' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ============================================================
+-- Approval notification trigger (optional — requires pg_net or Supabase Edge Functions)
+-- ============================================================
+-- When a member is approved, trigger a notification email via Supabase Edge Functions.
+-- See: https://supabase.com/docs/guides/functions/triggers
+--
+-- CREATE OR REPLACE FUNCTION notify_member_approved()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--   IF NEW.status = 'approved' AND OLD.status != 'approved' THEN
+--     PERFORM net.http_post(
+--       url := 'https://<project>.supabase.co/functions/v1/send-approval-email',
+--       body := json_build_object('user_id', NEW.id, 'email', NEW.full_name)::text
+--     );
+--   END IF;
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql SECURITY DEFINER;
+--
+-- CREATE TRIGGER on_member_approved
+--   AFTER UPDATE ON profiles
+--   FOR EACH ROW EXECUTE FUNCTION notify_member_approved();
