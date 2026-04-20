@@ -1,29 +1,26 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Image as ImageIcon, FileText, Film, Filter, Upload, X, CheckCircle } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import PageHero from "@/components/ui/PageHero";
 import { createClient } from "@/lib/supabase/client";
+import type { ArchiveItem } from "@/lib/types";
 
 type ItemType = "photo" | "document" | "video" | "all";
 
-const MOCK_ARCHIVE = [
-  { id: "1", title: "תמונות אימון 1985", year: 1985, type: "photo" as const, seed: "archive1" },
-  { id: "2", title: "ריכוז מסמכים 1990", year: 1990, type: "document" as const, seed: "archive2" },
-  { id: "3", title: "מבצע ליטני — תיעוד", year: 1982, type: "photo" as const, seed: "archive3" },
-  { id: "4", title: "טקס סיום מחזור 45", year: 1995, type: "photo" as const, seed: "archive4" },
-  { id: "5", title: "גיבוש 1988 — צפון", year: 1988, type: "photo" as const, seed: "archive5" },
-  { id: "6", title: "כנס בוגרים 2005", year: 2005, type: "video" as const, seed: "archive6" },
-  { id: "7", title: "תצוגה אווירית 1979", year: 1979, type: "photo" as const, seed: "archive7" },
-  { id: "8", title: "פקודת מבצע עיראק", year: 1973, type: "document" as const, seed: "archive8" },
-  { id: "9", title: "מצעד יום העצמאות 2000", year: 2000, type: "photo" as const, seed: "archive9" },
+const MOCK_ARCHIVE: (ArchiveItem & { seed: string })[] = [
+  { id: "1", title: "תמונות אימון 1985", year: 1985, type: "photo", seed: "archive1", is_approved: true, created_at: "" },
+  { id: "2", title: "ריכוז מסמכים 1990", year: 1990, type: "document", seed: "archive2", is_approved: true, created_at: "" },
+  { id: "3", title: "מבצע ליטני — תיעוד", year: 1982, type: "photo", seed: "archive3", is_approved: true, created_at: "" },
+  { id: "4", title: "טקס סיום מחזור 45", year: 1995, type: "photo", seed: "archive4", is_approved: true, created_at: "" },
+  { id: "5", title: "גיבוש 1988 — צפון", year: 1988, type: "photo", seed: "archive5", is_approved: true, created_at: "" },
+  { id: "6", title: "כנס בוגרים 2005", year: 2005, type: "video", seed: "archive6", is_approved: true, created_at: "" },
+  { id: "7", title: "תצוגה אווירית 1979", year: 1979, type: "photo", seed: "archive7", is_approved: true, created_at: "" },
+  { id: "8", title: "פקודת מבצע", year: 1973, type: "document", seed: "archive8", is_approved: true, created_at: "" },
+  { id: "9", title: "מצעד יום העצמאות 2000", year: 2000, type: "photo", seed: "archive9", is_approved: true, created_at: "" },
 ];
-
-const YEARS = Array.from(
-  new Set(MOCK_ARCHIVE.map((a) => a.year))
-).sort((a, b) => b - a);
 
 const TYPE_ICONS = {
   photo: ImageIcon,
@@ -31,7 +28,13 @@ const TYPE_ICONS = {
   video: Film,
 };
 
-function UploadModal({ onClose }: { onClose: () => void }) {
+function ItemSkeleton() {
+  return (
+    <div className="rounded-xl overflow-hidden bg-gray-100 aspect-square animate-pulse" />
+  );
+}
+
+function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: () => void }) {
   const [form, setForm] = useState({ title: "", year: new Date().getFullYear(), type: "photo" as "photo" | "document" | "video", description: "" });
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -59,6 +62,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
         uploaded_by: user?.id,
       });
       setDone(true);
+      onUploaded();
     } finally {
       setUploading(false);
     }
@@ -141,13 +145,75 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+type DisplayItem = {
+  id: string;
+  title: string;
+  year: number | null;
+  type: "photo" | "document" | "video";
+  imageUrl: string | null;
+};
+
 function ArchiveContent() {
+  const [items, setItems] = useState<DisplayItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<ItemType>("all");
   const [yearFilter, setYearFilter] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const supabase = createClient();
 
-  const filtered = MOCK_ARCHIVE.filter((item) => {
+  async function loadItems() {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("archive_items")
+        .select("*")
+        .eq("is_approved", true)
+        .order("year", { ascending: false });
+
+      if (data && data.length > 0) {
+        setItems(
+          data.map((item: ArchiveItem) => ({
+            id: item.id,
+            title: item.title,
+            year: item.year || null,
+            type: item.type,
+            imageUrl: item.file_url || null,
+          }))
+        );
+      } else {
+        setItems(
+          MOCK_ARCHIVE.map((item) => ({
+            id: item.id,
+            title: item.title,
+            year: item.year || null,
+            type: item.type,
+            imageUrl: `https://picsum.photos/seed/${item.seed}/300/300`,
+          }))
+        );
+      }
+    } catch {
+      setItems(
+        MOCK_ARCHIVE.map((item) => ({
+          id: item.id,
+          title: item.title,
+          year: item.year || null,
+          type: item.type,
+          imageUrl: `https://picsum.photos/seed/${item.seed}/300/300`,
+        }))
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadItems();
+  }, []);
+
+  const years = Array.from(new Set(items.map((i) => i.year).filter(Boolean))).sort((a, b) => (b as number) - (a as number)) as number[];
+
+  const filtered = items.filter((item) => {
     const matchType = typeFilter === "all" || item.type === typeFilter;
     const matchYear = !yearFilter || item.year === yearFilter;
     return matchType && matchYear;
@@ -155,7 +221,7 @@ function ArchiveContent() {
 
   return (
     <>
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} onUploaded={loadItems} />}
       <PageHero
         title="ארכיון היסטורי"
         subtitle={'תמונות, מסמכים ותיעוד מתולדות סיירת נח"ל'}
@@ -170,7 +236,6 @@ function ArchiveContent() {
               <span className="text-sm font-medium text-gray-600">סנן לפי:</span>
             </div>
 
-            {/* Type filter */}
             <div className="flex gap-2">
               {(["all", "photo", "document", "video"] as const).map((type) => (
                 <button
@@ -187,14 +252,13 @@ function ArchiveContent() {
               ))}
             </div>
 
-            {/* Year filter */}
             <select
               value={yearFilter || ""}
               onChange={(e) => setYearFilter(e.target.value ? Number(e.target.value) : null)}
               className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:border-green-dark"
             >
               <option value="">כל השנים</option>
-              {YEARS.map((y) => (
+              {years.map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -211,46 +275,76 @@ function ArchiveContent() {
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map((item) => {
-              const Icon = TYPE_ICONS[item.type];
-              return (
-                <div
-                  key={item.id}
-                  className="group relative cursor-pointer rounded-xl overflow-hidden bg-gray-100 aspect-square"
-                  onClick={() => item.type === "photo" && setLightbox(item.seed)}
-                >
-                  {item.type === "photo" ? (
-                    <>
-                      <Image
-                        src={`https://picsum.photos/seed/${item.seed}/300/300`}
-                        alt={item.title}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                        <ImageIcon size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gray-50">
-                      <Icon size={32} className="text-gray-400 mb-2" />
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                    <p className="text-white text-xs font-medium truncate">{item.title}</p>
-                    <p className="text-white/60 text-xs">{item.year}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="text-center py-20 text-gray-400">
-              <ImageIcon size={40} className="mx-auto mb-3 opacity-30" />
-              <p>לא נמצאו פריטים</p>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => <ItemSkeleton key={i} />)}
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filtered.map((item) => {
+                  const Icon = TYPE_ICONS[item.type];
+                  return (
+                    <div
+                      key={item.id}
+                      className="group relative cursor-pointer rounded-xl overflow-hidden bg-gray-100 aspect-square"
+                      onClick={() => item.type === "photo" && item.imageUrl && setLightbox(item.imageUrl)}
+                    >
+                      {item.type === "photo" && item.imageUrl ? (
+                        <>
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.title}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <ImageIcon size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gray-50">
+                          <Icon size={32} className="text-gray-400 mb-2" />
+                          {item.type === "video" && item.imageUrl && (
+                            <a
+                              href={item.imageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-green-dark underline mt-1"
+                            >
+                              פתח וידאו
+                            </a>
+                          )}
+                          {item.type === "document" && item.imageUrl && (
+                            <a
+                              href={item.imageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs text-green-dark underline mt-1"
+                            >
+                              פתח מסמך
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
+                        <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                        {item.year && <p className="text-white/60 text-xs">{item.year}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filtered.length === 0 && (
+                <div className="text-center py-20 text-gray-400">
+                  <ImageIcon size={40} className="mx-auto mb-3 opacity-30" />
+                  <p>לא נמצאו פריטים</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -268,7 +362,7 @@ function ArchiveContent() {
             <X size={24} />
           </button>
           <Image
-            src={`https://picsum.photos/seed/${lightbox}/800/600`}
+            src={lightbox}
             alt=""
             width={800}
             height={600}
