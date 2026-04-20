@@ -9,14 +9,28 @@ export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // Placeholder: in production, send to API / Supabase
-    await new Promise((r) => setTimeout(r, 1000));
-    setSubmitted(true);
-    setLoading(false);
+    setError("");
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "שגיאה בשליחה");
+      }
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setError((err as Error).message || "שגיאה בשליחה. נסה שוב.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -106,6 +120,11 @@ export default function ContactPage() {
                       placeholder="כתוב את הודעתך כאן..."
                     />
                   </div>
+                  {error && (
+                    <div className="flex items-center gap-2 text-red-600 bg-red-50 rounded-lg p-3 text-sm">
+                      {error}
+                    </div>
+                  )}
                   <button
                     type="submit"
                     disabled={loading}

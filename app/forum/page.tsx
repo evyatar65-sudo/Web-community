@@ -173,9 +173,10 @@ function ForumContent() {
           {/* Posts list */}
           <div className="space-y-3">
             {filtered.map((post) => (
-              <div
+              <Link
                 key={post.id}
-                className="card-green-accent p-5 hover:shadow-md transition-shadow cursor-pointer group"
+                href={`/forum/${post.id}`}
+                className="card-green-accent p-5 hover:shadow-md transition-shadow group block"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -209,7 +210,7 @@ function ForumContent() {
                     <span className="text-xs text-gray-300">תגובות</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
