@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search } from "lucide-react";
+import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, Event, ArchiveItem } from "@/lib/types";
+import type { Profile, Event, ArchiveItem, Benefit } from "@/lib/types";
 
-type AdminTab = "users" | "events" | "archive" | "members" | "donations";
+type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits";
 
 const TAB_ICONS = {
   users: Users,
@@ -14,6 +14,7 @@ const TAB_ICONS = {
   archive: ImageIcon,
   members: MessageSquare,
   donations: Shield,
+  benefits: Gift,
 };
 
 const TAB_LABELS: Record<AdminTab, string> = {
@@ -22,6 +23,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   archive: "ניהול ארכיון",
   members: "כל החברים",
   donations: "תרומות",
+  benefits: "הטבות",
 };
 
 function PendingUsersTab() {
@@ -665,6 +667,227 @@ function DonationsTab() {
   );
 }
 
+type BenefitForm = { company: string; description: string; discount_details: string; link: string; is_active: boolean };
+const EMPTY_BENEFIT: BenefitForm = { company: "", description: "", discount_details: "", link: "", is_active: true };
+
+function BenefitModal({
+  initial,
+  onSave,
+  onClose,
+}: {
+  initial: BenefitForm;
+  onSave: (form: BenefitForm) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<BenefitForm>(initial);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-rubik font-bold text-lg text-gray-900">
+            {initial.company ? "עריכת הטבה" : "הטבה חדשה"}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">שם החברה / ספק *</label>
+            <input
+              required
+              type="text"
+              value={form.company}
+              onChange={(e) => setForm({ ...form, company: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+              placeholder="שם החברה"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור ההטבה *</label>
+            <input
+              required
+              type="text"
+              value={form.discount_details}
+              onChange={(e) => setForm({ ...form, discount_details: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+              placeholder='לדוגמה: הנחה 20% על כל המוצרים'
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור כללי</label>
+            <textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark resize-none"
+              placeholder="מידע נוסף על ההטבה..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">קישור (לא חובה)</label>
+            <input
+              type="url"
+              value={form.link}
+              onChange={(e) => setForm({ ...form, link: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+              placeholder="https://..."
+              dir="ltr"
+            />
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              className="w-4 h-4 accent-green-dark"
+            />
+            <span className="text-sm text-gray-700">הטבה פעילה (מוצגת לחברים)</span>
+          </label>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-green-dark text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60"
+            >
+              {saving ? "שומר..." : "שמור הטבה"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50"
+            >
+              ביטול
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function BenefitsTab() {
+  const [benefits, setBenefits] = useState<Benefit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Benefit | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await supabase.from("benefits").select("*").order("company");
+    setBenefits(data || []);
+    setLoading(false);
+  }
+
+  async function handleSave(form: BenefitForm) {
+    if (editing) {
+      await supabase.from("benefits").update(form).eq("id", editing.id);
+    } else {
+      await supabase.from("benefits").insert(form);
+    }
+    await load();
+    setShowModal(false);
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("למחוק את ההטבה?")) return;
+    setDeleting(id);
+    await supabase.from("benefits").delete().eq("id", id);
+    setBenefits((prev) => prev.filter((b) => b.id !== id));
+    setDeleting(null);
+  }
+
+  async function toggleActive(b: Benefit) {
+    await supabase.from("benefits").update({ is_active: !b.is_active }).eq("id", b.id);
+    setBenefits((prev) => prev.map((x) => (x.id === b.id ? { ...x, is_active: !b.is_active } : x)));
+  }
+
+  const modalInitial: BenefitForm = editing
+    ? { company: editing.company, description: editing.description || "", discount_details: editing.discount_details || "", link: editing.link || "", is_active: editing.is_active }
+    : EMPTY_BENEFIT;
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      {showModal && (
+        <BenefitModal
+          initial={modalInitial}
+          onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditing(null); }}
+        />
+      )}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-rubik font-bold text-lg">הטבות ({benefits.length})</h3>
+        <button
+          onClick={() => { setEditing(null); setShowModal(true); }}
+          className="flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors"
+        >
+          <Plus size={14} />
+          הטבה חדשה
+        </button>
+      </div>
+      {benefits.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">אין הטבות במערכת</p>
+      ) : (
+        <div className="space-y-3">
+          {benefits.map((b) => (
+            <div key={b.id} className="flex items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50/50">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+                  <Gift size={15} className="text-green-dark" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{b.company}</p>
+                  <p className="text-xs text-gray-400 truncate">{b.discount_details || b.description}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => toggleActive(b)}
+                  className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${
+                    b.is_active ? "bg-green-pale text-green-dark hover:bg-green-light/20" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                  }`}
+                >
+                  {b.is_active ? "פעיל" : "לא פעיל"}
+                </button>
+                <button
+                  onClick={() => { setEditing(b); setShowModal(true); }}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="ערוך"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(b.id)}
+                  disabled={deleting === b.id}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="מחק"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
   const [stats, setStats] = useState({ pending: 0, approved: 0, total: 0, pendingArchive: 0 });
@@ -813,6 +1036,7 @@ function AdminContent() {
             {activeTab === "archive" && <ArchiveTab />}
             {activeTab === "members" && <AllMembersTab />}
             {activeTab === "donations" && <DonationsTab />}
+            {activeTab === "benefits" && <BenefitsTab />}
           </div>
         </div>
       </div>
