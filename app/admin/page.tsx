@@ -670,22 +670,40 @@ function AdminContent() {
   const [stats, setStats] = useState({ pending: 0, approved: 0, total: 0, pendingArchive: 0 });
   const supabase = createClient();
 
-  useEffect(() => {
-    async function loadStats() {
-      const [{ data: profiles }, { count: archiveCount }] = await Promise.all([
-        supabase.from("profiles").select("status"),
-        supabase.from("archive_items").select("*", { count: "exact", head: true }).eq("is_approved", false),
-      ]);
-      if (profiles) {
-        setStats({
-          pending: profiles.filter((p) => p.status === "pending").length,
-          approved: profiles.filter((p) => p.status === "approved").length,
-          total: profiles.length,
-          pendingArchive: archiveCount || 0,
-        });
-      }
+  async function loadStats() {
+    const [{ data: profiles }, { count: archiveCount }] = await Promise.all([
+      supabase.from("profiles").select("status"),
+      supabase.from("archive_items").select("*", { count: "exact", head: true }).eq("is_approved", false),
+    ]);
+    if (profiles) {
+      setStats({
+        pending: profiles.filter((p) => p.status === "pending").length,
+        approved: profiles.filter((p) => p.status === "approved").length,
+        total: profiles.length,
+        pendingArchive: archiveCount || 0,
+      });
     }
+  }
+
+  useEffect(() => {
     loadStats();
+
+    // Update pending badge in real-time when new users register or status changes
+    const channel = supabase
+      .channel("admin_profiles_watch")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => { loadStats(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "archive_items" },
+        () => { loadStats(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   return (
