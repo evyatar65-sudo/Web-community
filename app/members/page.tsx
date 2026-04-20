@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Filter, Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import MemberCard from "@/components/ui/MemberCard";
+import { MemberCardSkeleton } from "@/components/ui/Skeleton";
 import PageHero from "@/components/ui/PageHero";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
@@ -86,16 +87,7 @@ function MembersContent() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="card p-5 animate-pulse">
-                  <div className="flex gap-4">
-                    <div className="w-14 h-14 bg-gray-100 rounded-full shrink-0" />
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-100 rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-gray-100 rounded w-1/2 mb-2" />
-                      <div className="h-3 bg-gray-100 rounded w-2/3" />
-                    </div>
-                  </div>
-                </div>
+                <MemberCardSkeleton key={i} />
               ))}
             </div>
           ) : filtered.length === 0 ? (
