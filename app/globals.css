@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --green-darkest: #1a2e1a;
+  --green-dark: #2d5a27;
+  --green-mid: #3d7a35;
+  --green-light: #6aaa5e;
+  --green-pale: #e8f5e3;
+  --black: #0d0d0d;
+  --white: #ffffff;
+  --gray-light: #f5f5f0;
+  --gray-mid: #888880;
+  --gold: #c9a84c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Heebo', sans-serif;
+  color: #0d0d0d;
+  background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Rubik', sans-serif;
+  font-weight: 700;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .hero-texture {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-green-dark text-white px-6 py-3 rounded font-semibold hover:bg-green-mid transition-colors duration-200 inline-flex items-center gap-2;
+  }
+
+  .btn-outline {
+    @apply border-2 border-white text-white px-6 py-3 rounded font-semibold hover:bg-white hover:text-green-dark transition-colors duration-200 inline-flex items-center gap-2;
+  }
+
+  .btn-gold {
+    @apply bg-gold text-white px-6 py-3 rounded font-semibold hover:opacity-90 transition-opacity duration-200 inline-flex items-center gap-2;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden;
+  }
+
+  .card-green-accent {
+    @apply bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden border-r-4 border-r-green-dark;
+  }
+
+  .section-padding {
+    @apply py-16 px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-max {
+    @apply max-w-7xl mx-auto;
+  }
+}
