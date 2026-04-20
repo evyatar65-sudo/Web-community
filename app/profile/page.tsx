@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRef } from "react";
 import { Save, Camera, AlertCircle, CheckCircle } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import PageHero from "@/components/ui/PageHero";
@@ -13,6 +14,8 @@ function ProfileContent() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -56,6 +59,27 @@ function ProfileContent() {
     }
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const ext = file.name.split(".").pop();
+      const path = `avatars/${user.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("uploads").upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("uploads").getPublicUrl(path);
+      await supabase.from("profiles").update({ avatar_url: data.publicUrl }).eq("id", user.id);
+      setProfile((prev) => ({ ...prev, avatar_url: data.publicUrl }));
+    } catch {
+      setError("שגיאה בהעלאת תמונה");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   function set(field: keyof Profile, value: unknown) {
     setProfile((prev) => ({ ...prev, [field]: value }));
   }
@@ -88,11 +112,24 @@ function ProfileContent() {
                 </div>
                 <button
                   type="button"
-                  className="absolute bottom-0 left-0 w-8 h-8 bg-green-dark rounded-full flex items-center justify-center text-white hover:bg-green-mid transition-colors"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="absolute bottom-0 left-0 w-8 h-8 bg-green-dark rounded-full flex items-center justify-center text-white hover:bg-green-mid transition-colors disabled:opacity-60"
                   aria-label="שנה תמונה"
                 >
-                  <Camera size={14} />
+                  {avatarUploading ? (
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
                 </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarChange}
+                />
               </div>
               <div>
                 <h3 className="font-rubik font-bold text-xl text-gray-900">{profile.full_name}</h3>

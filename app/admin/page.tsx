@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Users, Calendar, FileText, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
+import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Event, ArchiveItem } from "@/lib/types";
 
-type AdminTab = "users" | "events" | "archive" | "forum" | "donations";
+type AdminTab = "users" | "events" | "archive" | "members" | "donations";
 
 const TAB_ICONS = {
   users: Users,
   events: Calendar,
   archive: ImageIcon,
-  forum: MessageSquare,
+  members: MessageSquare,
   donations: Shield,
 };
 
@@ -20,7 +20,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   users: "אישור משתמשים",
   events: "ניהול אירועים",
   archive: "ניהול ארכיון",
-  forum: "ניהול פורום",
+  members: "כל החברים",
   donations: "תרומות",
 };
 
@@ -444,6 +444,150 @@ function ArchiveTab() {
   );
 }
 
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  approved: { label: "מאושר", color: "bg-green-pale text-green-dark" },
+  pending:  { label: "ממתין", color: "bg-yellow-100 text-yellow-700" },
+  rejected: { label: "נדחה",  color: "bg-red-100 text-red-600" },
+};
+
+function AllMembersTab() {
+  const [members, setMembers] = useState<Profile[]>([]);
+  const [filtered, setFiltered] = useState<Profile[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function load() {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setMembers(data || []);
+    setFiltered(data || []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    const q = search.toLowerCase();
+    setFiltered(
+      !q
+        ? members
+        : members.filter(
+            (m) =>
+              m.full_name?.toLowerCase().includes(q) ||
+              m.service_years?.toLowerCase().includes(q) ||
+              m.role_in_unit?.toLowerCase().includes(q)
+          )
+    );
+  }, [search, members]);
+
+  async function updateStatus(id: string, status: "approved" | "rejected") {
+    setProcessing(id);
+    await supabase.from("profiles").update({ status }).eq("id", id);
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
+    setProcessing(null);
+  }
+
+  async function toggleRole(id: string, currentRole: string) {
+    const newRole = currentRole === "admin" ? "member" : "admin";
+    setProcessing(id);
+    await supabase.from("profiles").update({ role: newRole }).eq("id", id);
+    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role: newRole as "member" | "admin" } : m)));
+    setProcessing(null);
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="חיפוש חבר..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-4 py-2 pr-9 text-sm focus:outline-none focus:border-green-dark"
+          />
+        </div>
+        <span className="text-sm text-gray-400">{filtered.length} חברים</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-right py-3 px-3 font-medium text-gray-600">שם</th>
+              <th className="text-right py-3 px-3 font-medium text-gray-600 hidden sm:table-cell">שנות שירות</th>
+              <th className="text-right py-3 px-3 font-medium text-gray-600">סטטוס</th>
+              <th className="text-right py-3 px-3 font-medium text-gray-600 hidden md:table-cell">תפקיד</th>
+              <th className="text-right py-3 px-3 font-medium text-gray-600">פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((m) => {
+              const s = STATUS_LABELS[m.status] || STATUS_LABELS.pending;
+              return (
+                <tr key={m.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                  <td className="py-2.5 px-3 font-medium text-gray-900">{m.full_name}</td>
+                  <td className="py-2.5 px-3 text-gray-500 hidden sm:table-cell">{m.service_years || "—"}</td>
+                  <td className="py-2.5 px-3">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.color}`}>{s.label}</span>
+                  </td>
+                  <td className="py-2.5 px-3 hidden md:table-cell">
+                    <button
+                      onClick={() => toggleRole(m.id, m.role)}
+                      disabled={processing === m.id}
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                        m.role === "admin"
+                          ? "bg-green-dark text-white hover:bg-green-mid"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      } disabled:opacity-50`}
+                    >
+                      {m.role === "admin" ? "מנהל" : "חבר"}
+                    </button>
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <div className="flex items-center gap-1.5">
+                      {m.status !== "approved" && (
+                        <button
+                          onClick={() => updateStatus(m.id, "approved")}
+                          disabled={processing === m.id}
+                          className="p-1 text-green-dark hover:bg-green-pale rounded transition-colors disabled:opacity-50"
+                          title="אשר"
+                        >
+                          <CheckCircle size={14} />
+                        </button>
+                      )}
+                      {m.status !== "rejected" && (
+                        <button
+                          onClick={() => updateStatus(m.id, "rejected")}
+                          disabled={processing === m.id}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          title="דחה"
+                        >
+                          <XCircle size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function DonationsTab() {
   const mockStats = { total: "₪127,450", monthly: "₪12,300", donors: 84 };
   return (
@@ -596,12 +740,7 @@ function AdminContent() {
             {activeTab === "users" && <PendingUsersTab />}
             {activeTab === "events" && <EventsTab />}
             {activeTab === "archive" && <ArchiveTab />}
-            {activeTab === "forum" && (
-              <div className="text-center py-12 text-gray-400">
-                <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
-                <p>ניהול פורום — בקרוב</p>
-              </div>
-            )}
+            {activeTab === "members" && <AllMembersTab />}
             {activeTab === "donations" && <DonationsTab />}
           </div>
         </div>

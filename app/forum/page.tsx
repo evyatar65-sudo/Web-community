@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquare, Plus, Clock, ChevronLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { MessageSquare, Plus, Clock, Send } from "lucide-react";
 import Link from "next/link";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import PageHero from "@/components/ui/PageHero";
+import { createClient } from "@/lib/supabase/client";
 
 type Category = "כללי" | "מקצועי" | "חברתי" | "ציוד ומילואים";
 
@@ -85,11 +87,44 @@ function ForumContent() {
   const [activeCategory, setActiveCategory] = useState<Category | "הכל">("הכל");
   const [showNewPost, setShowNewPost] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", category: CATEGORIES[0], content: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [postError, setPostError] = useState("");
+  const router = useRouter();
+  const supabase = createClient();
 
   const filtered =
     activeCategory === "הכל"
       ? MOCK_POSTS
       : MOCK_POSTS.filter((p) => p.category === activeCategory);
+
+  async function handlePublish() {
+    if (!newPost.title.trim() || !newPost.content.trim()) {
+      setPostError("יש למלא כותרת ותוכן");
+      return;
+    }
+    setSubmitting(true);
+    setPostError("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("לא מחובר");
+      const { data, error } = await supabase
+        .from("forum_posts")
+        .insert({ author_id: user.id, category: newPost.category, title: newPost.title, content: newPost.content })
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (data?.id) {
+        router.push(`/forum/${data.id}`);
+      } else {
+        setShowNewPost(false);
+        setNewPost({ title: "", category: CATEGORIES[0], content: "" });
+      }
+    } catch {
+      setPostError("שגיאה בפרסום. נסה שוב.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <>
@@ -152,15 +187,24 @@ function ForumContent() {
                   onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
                   className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-green-dark bg-white resize-none"
                 />
+                {postError && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{postError}</p>
+                )}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowNewPost(false)}
-                    className="px-6 py-2.5 rounded-lg text-sm font-semibold bg-green-dark text-white hover:bg-green-mid transition-colors"
+                    onClick={handlePublish}
+                    disabled={submitting}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold bg-green-dark text-white hover:bg-green-mid transition-colors disabled:opacity-60"
                   >
+                    {submitting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
                     פרסם
                   </button>
                   <button
-                    onClick={() => setShowNewPost(false)}
+                    onClick={() => { setShowNewPost(false); setPostError(""); }}
                     className="px-6 py-2.5 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
                   >
                     ביטול
