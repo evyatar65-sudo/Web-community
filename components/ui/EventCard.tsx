@@ -26,7 +26,10 @@ export default function EventCard({ event, showRsvp = false }: EventCardProps) {
   const isPast = new Date(event.date) < new Date();
 
   return (
-    <div className={`card border-r-4 ${isPast ? "border-r-gray-300" : "border-r-green-dark"} p-5`}>
+    <Link
+      href={`/events/${event.id}`}
+      className={`card border-r-4 ${isPast ? "border-r-gray-300 opacity-75" : "border-r-green-dark hover:shadow-md"} p-5 block group transition-shadow`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
@@ -41,7 +44,7 @@ export default function EventCard({ event, showRsvp = false }: EventCardProps) {
               </span>
             )}
           </div>
-          <h3 className="font-rubik font-bold text-gray-900 text-lg mb-2">{event.title}</h3>
+          <h3 className="font-rubik font-bold text-gray-900 text-lg mb-2 group-hover:text-green-dark transition-colors">{event.title}</h3>
           {event.description && (
             <p className="text-sm text-gray-600 mb-3 line-clamp-2">{event.description}</p>
           )}
@@ -71,15 +74,12 @@ export default function EventCard({ event, showRsvp = false }: EventCardProps) {
       </div>
       {showRsvp && !isPast && (
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <Link
-            href={`/events/${event.id}`}
-            className="inline-flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-mid transition-colors"
-          >
+          <span className="inline-flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded text-sm font-semibold group-hover:bg-green-mid transition-colors">
             <Users size={14} />
-            אישור הגעה
-          </Link>
+            לפרטים ואישור הגעה
+          </span>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
