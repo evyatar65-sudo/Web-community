@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Download, FileText, Users, Target, Heart } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
+
+export const metadata: Metadata = {
+  title: `אודות העמותה — עמותת בוגרי סיירת נח"ל`,
+  description: `מידע על עמותת בוגרי סיירת נח"ל, מטרותיה, ועד העמותה ופעילויותיה לטובת בוגרים ומשפחות הנופלים.`,
+};
 
 const teamMembers = [
   { name: "אלון כהן", role: "יושב ראש", seed: "team1", years: "2012-2016" },

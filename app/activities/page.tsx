@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Shield, Heart, Users, Star, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
+
+export const metadata: Metadata = {
+  title: `פעילויות — עמותת בוגרי סיירת נח"ל`,
+  description: "תמיכה בפצועים, ליווי משפחות שכולות, חיזוק הסיירת הפעילה ופעילות קהילתית לאורך השנה.",
+};
 
 const activities = [
   {

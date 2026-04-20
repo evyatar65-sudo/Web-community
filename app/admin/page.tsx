@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Users, Calendar, FileText, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2 } from "lucide-react";
+import { CheckCircle, XCircle, Users, Calendar, FileText, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, Event } from "@/lib/types";
+import type { Profile, Event, ArchiveItem } from "@/lib/types";
 
-type AdminTab = "users" | "events" | "content" | "forum" | "donations";
+type AdminTab = "users" | "events" | "archive" | "forum" | "donations";
 
 const TAB_ICONS = {
   users: Users,
   events: Calendar,
-  content: FileText,
+  archive: ImageIcon,
   forum: MessageSquare,
   donations: Shield,
 };
@@ -19,7 +19,7 @@ const TAB_ICONS = {
 const TAB_LABELS: Record<AdminTab, string> = {
   users: "אישור משתמשים",
   events: "ניהול אירועים",
-  content: "ניהול תוכן",
+  archive: "ניהול ארכיון",
   forum: "ניהול פורום",
   donations: "תרומות",
 };
@@ -355,6 +355,95 @@ function EventsTab() {
   );
 }
 
+function ArchiveTab() {
+  const [items, setItems] = useState<ArchiveItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function load() {
+    const { data } = await supabase
+      .from("archive_items")
+      .select("*")
+      .eq("is_approved", false)
+      .order("created_at", { ascending: false });
+    setItems(data || []);
+    setLoading(false);
+  }
+
+  async function approve(id: string) {
+    setProcessing(id);
+    await supabase.from("archive_items").update({ is_approved: true }).eq("id", id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    setProcessing(null);
+  }
+
+  async function reject(id: string) {
+    setProcessing(id);
+    await supabase.from("archive_items").delete().eq("id", id);
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    setProcessing(null);
+  }
+
+  const TYPE_LABELS: Record<string, string> = { photo: "תמונה", document: "מסמך", video: "וידאו" };
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <CheckCircle size={40} className="text-green-light mx-auto mb-3" />
+        <p className="text-gray-500">אין פריטים ממתינים לאישור</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item.id} className="flex items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50/50">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+              <ImageIcon size={15} className="text-green-dark" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900 truncate">{item.title}</p>
+              <p className="text-xs text-gray-400">
+                {TYPE_LABELS[item.type] || item.type}
+                {item.year ? ` · ${item.year}` : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => approve(item.id)}
+              disabled={processing === item.id}
+              className="flex items-center gap-1 bg-green-dark text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-green-mid transition-colors disabled:opacity-50"
+            >
+              <CheckCircle size={12} />
+              אישור
+            </button>
+            <button
+              onClick={() => reject(item.id)}
+              disabled={processing === item.id}
+              className="flex items-center gap-1 bg-red-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors disabled:opacity-50"
+            >
+              <XCircle size={12} />
+              דחייה
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DonationsTab() {
   const mockStats = { total: "₪127,450", monthly: "₪12,300", donors: 84 };
   return (
@@ -492,12 +581,7 @@ function AdminContent() {
             </h2>
             {activeTab === "users" && <PendingUsersTab />}
             {activeTab === "events" && <EventsTab />}
-            {activeTab === "content" && (
-              <div className="text-center py-12 text-gray-400">
-                <FileText size={40} className="mx-auto mb-3 opacity-30" />
-                <p>ניהול תוכן — בקרוב</p>
-              </div>
-            )}
+            {activeTab === "archive" && <ArchiveTab />}
             {activeTab === "forum" && (
               <div className="text-center py-12 text-gray-400">
                 <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />

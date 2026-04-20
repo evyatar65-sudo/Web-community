@@ -23,6 +23,22 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  function passwordStrength(pw: string): { score: number; label: string; color: string } {
+    if (!pw) return { score: 0, label: "", color: "bg-gray-200" };
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    if (score <= 1) return { score, label: "חלשה", color: "bg-red-400" };
+    if (score === 2) return { score, label: "בינונית", color: "bg-orange-400" };
+    if (score === 3) return { score, label: "טובה", color: "bg-yellow-400" };
+    return { score, label: "חזקה", color: "bg-green-mid" };
+  }
+
+  const strength = passwordStrength(form.password);
+
   const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -221,6 +237,23 @@ export default function RegisterPage() {
                     {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {form.password && (
+                  <div className="mt-2">
+                    <div className="flex gap-1 mb-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                            strength.score >= i ? strength.color : "bg-gray-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      חוזק סיסמה: <span className="font-medium">{strength.label}</span>
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">

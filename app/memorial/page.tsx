@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Flame, Clock, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
+
+export const metadata: Metadata = {
+  title: `הנצחה ומורשת — עמותת בוגרי סיירת נח"ל`,
+  description: `לזכרם של נופלי סיירת נח"ל — הנצחה, מורשת וקיום זכרם לדורות.`,
+};
 
 const fallen = [
   {
