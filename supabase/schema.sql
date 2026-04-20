@@ -71,7 +71,18 @@ CREATE TABLE IF NOT EXISTS archive_items (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Benefits
+-- 7. Fallen (memorial)
+CREATE TABLE IF NOT EXISTS fallen (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  role TEXT,
+  year INT NOT NULL,
+  bio TEXT,
+  photo_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 8. Benefits
 CREATE TABLE IF NOT EXISTS benefits (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   company TEXT NOT NULL,
@@ -92,6 +103,7 @@ ALTER TABLE forum_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE forum_replies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archive_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE benefits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE fallen ENABLE ROW LEVEL SECURITY;
 
 -- PROFILES policies
 CREATE POLICY "Public profiles are viewable by approved members"
@@ -227,6 +239,17 @@ CREATE POLICY "Admins can manage archive"
     EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
   );
 
+-- FALLEN policies
+CREATE POLICY "Fallen are publicly viewable"
+  ON fallen FOR SELECT
+  USING (true);
+
+CREATE POLICY "Admins can manage fallen"
+  ON fallen FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
 -- BENEFITS policies
 CREATE POLICY "Approved members can view benefits"
   ON benefits FOR SELECT
@@ -253,6 +276,7 @@ CREATE INDEX IF NOT EXISTS idx_forum_posts_author ON forum_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_forum_posts_category ON forum_posts(category);
 CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id);
 CREATE INDEX IF NOT EXISTS idx_archive_approved ON archive_items(is_approved);
+CREATE INDEX IF NOT EXISTS idx_fallen_year ON fallen(year);
 
 -- ============================================================
 -- Storage Buckets

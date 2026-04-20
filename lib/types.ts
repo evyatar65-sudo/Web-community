@@ -75,3 +75,13 @@ export interface Benefit {
   link?: string;
   is_active: boolean;
 }
+
+export interface Fallen {
+  id: string;
+  name: string;
+  role?: string;
+  year: number;
+  bio?: string;
+  photo_url?: string;
+  created_at: string;
+}

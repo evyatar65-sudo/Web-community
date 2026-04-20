@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift } from "lucide-react";
+import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift, Flame } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, Event, ArchiveItem, Benefit } from "@/lib/types";
+import type { Profile, Event, ArchiveItem, Benefit, Fallen } from "@/lib/types";
 
-type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits";
+type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits" | "fallen";
 
 const TAB_ICONS = {
   users: Users,
@@ -15,6 +15,7 @@ const TAB_ICONS = {
   members: MessageSquare,
   donations: Shield,
   benefits: Gift,
+  fallen: Flame,
 };
 
 const TAB_LABELS: Record<AdminTab, string> = {
@@ -24,6 +25,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   members: "כל החברים",
   donations: "תרומות",
   benefits: "הטבות",
+  fallen: "הנצחה",
 };
 
 function PendingUsersTab() {
@@ -667,6 +669,216 @@ function DonationsTab() {
   );
 }
 
+type FallenForm = { name: string; role: string; year: string; bio: string; photo_url: string };
+const EMPTY_FALLEN: FallenForm = { name: "", role: "", year: "", bio: "", photo_url: "" };
+
+function FallenModal({
+  initial,
+  onSave,
+  onClose,
+}: {
+  initial: FallenForm;
+  onSave: (form: FallenForm) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<FallenForm>(initial);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-rubik font-bold text-lg text-gray-900">
+            {initial.name ? "עריכת נופל" : "הוספת נופל"}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">שם מלא *</label>
+            <input
+              required
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+              placeholder="שם הנופל"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">תפקיד</label>
+              <input
+                type="text"
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+                placeholder='לוחם, מ"כ...'
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">שנת נפילה *</label>
+              <input
+                required
+                type="number"
+                value={form.year}
+                onChange={(e) => setForm({ ...form, year: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+                placeholder="2023"
+                min="1948"
+                max="2099"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור קצר</label>
+            <textarea
+              rows={3}
+              value={form.bio}
+              onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark resize-none"
+              placeholder="מספר מילים לזכרו..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">קישור לתמונה (לא חובה)</label>
+            <input
+              type="url"
+              value={form.photo_url}
+              onChange={(e) => setForm({ ...form, photo_url: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+              placeholder="https://..."
+              dir="ltr"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 bg-green-dark text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60"
+            >
+              {saving ? "שומר..." : "שמור"}
+            </button>
+            <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
+              ביטול
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function FallenTab() {
+  const [items, setItems] = useState<Fallen[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Fallen | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await supabase.from("fallen").select("*").order("year", { ascending: true });
+    setItems(data || []);
+    setLoading(false);
+  }
+
+  async function handleSave(form: FallenForm) {
+    const payload = { name: form.name, role: form.role || null, year: Number(form.year), bio: form.bio || null, photo_url: form.photo_url || null };
+    if (editing) {
+      await supabase.from("fallen").update(payload).eq("id", editing.id);
+    } else {
+      await supabase.from("fallen").insert(payload);
+    }
+    await load();
+    setShowModal(false);
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("למחוק רשומה זו?")) return;
+    setDeleting(id);
+    await supabase.from("fallen").delete().eq("id", id);
+    setItems((prev) => prev.filter((f) => f.id !== id));
+    setDeleting(null);
+  }
+
+  const modalInitial: FallenForm = editing
+    ? { name: editing.name, role: editing.role || "", year: String(editing.year), bio: editing.bio || "", photo_url: editing.photo_url || "" }
+    : EMPTY_FALLEN;
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      {showModal && (
+        <FallenModal
+          initial={modalInitial}
+          onSave={handleSave}
+          onClose={() => { setShowModal(false); setEditing(null); }}
+        />
+      )}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-rubik font-bold text-lg">נופלים ({items.length})</h3>
+        <button
+          onClick={() => { setEditing(null); setShowModal(true); }}
+          className="flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors"
+        >
+          <Plus size={14} />
+          הוסף נופל
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">אין רשומות במאגר ההנצחה</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((f) => (
+            <div key={f.id} className="flex items-center justify-between gap-4 p-4 border border-gold/20 rounded-xl hover:bg-amber-50/30 border-r-4 border-r-gold/60">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-gold/10 rounded-lg flex items-center justify-center shrink-0">
+                  <Flame size={15} className="text-gold" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{f.name}</p>
+                  <p className="text-xs text-gray-400">{f.role || "—"} · {f.year}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => { setEditing(f); setShowModal(true); }}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="ערוך"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(f.id)}
+                  disabled={deleting === f.id}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  title="מחק"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type BenefitForm = { company: string; description: string; discount_details: string; link: string; is_active: boolean };
 const EMPTY_BENEFIT: BenefitForm = { company: "", description: "", discount_details: "", link: "", is_active: true };
 
@@ -1037,6 +1249,7 @@ function AdminContent() {
             {activeTab === "members" && <AllMembersTab />}
             {activeTab === "donations" && <DonationsTab />}
             {activeTab === "benefits" && <BenefitsTab />}
+            {activeTab === "fallen" && <FallenTab />}
           </div>
         </div>
       </div>
