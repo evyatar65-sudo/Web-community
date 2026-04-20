@@ -19,8 +19,8 @@ const config: Config = {
         gold: "#c9a84c",
       },
       fontFamily: {
-        heebo: ["Heebo", "sans-serif"],
-        rubik: ["Rubik", "sans-serif"],
+        heebo: ["var(--font-heebo)", "Heebo", "sans-serif"],
+        rubik: ["var(--font-rubik)", "Rubik", "sans-serif"],
       },
       backgroundImage: {
         "texture-dark":

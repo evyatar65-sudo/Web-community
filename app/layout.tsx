@@ -1,17 +1,46 @@
 import type { Metadata } from "next";
+import { Heebo, Rubik } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
+const heebo = Heebo({
+  subsets: ["hebrew", "latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-heebo",
+  display: "swap",
+});
+
+const rubik = Rubik({
+  subsets: ["hebrew", "latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-rubik",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "עמותת בוגרי סיירת נח\"ל",
-  description: "חברה, מורשת, שייכות — קהילת בוגרי סיירת נח\"ל",
-  keywords: ["סיירת נח\"ל", "בוגרים", "עמותה", "IDF", "veterans"],
+  title: {
+    default: 'עמותת בוגרי סיירת נח"ל',
+    template: '%s | עמותת בוגרי סיירת נח"ל',
+  },
+  description: 'חברה, מורשת, שייכות — קהילת בוגרי סיירת נח"ל',
+  keywords: ['סיירת נח"ל', "בוגרים", "עמותה", "IDF", "veterans"],
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   openGraph: {
-    title: "עמותת בוגרי סיירת נח\"ל",
-    description: "חברה, מורשת, שייכות",
+    title: 'עמותת בוגרי סיירת נח"ל',
+    description: 'חברה, מורשת, שייכות — קהילת בוגרי סיירת נח"ל',
     locale: "he_IL",
     type: "website",
+    siteName: 'עמותת בוגרי סיירת נח"ל',
+  },
+  twitter: {
+    card: "summary",
+    title: 'עמותת בוגרי סיירת נח"ל',
+    description: 'חברה, מורשת, שייכות — קהילת בוגרי סיירת נח"ל',
   },
 };
 
@@ -21,15 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="he" dir="rtl">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable}`}>
       <body className="font-heebo antialiased">
         <Navbar />
         <main>{children}</main>

@@ -1,17 +1,31 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Award, Briefcase, Users, GraduationCap, Calendar, Home } from "lucide-react";
 import Link from "next/link";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
 import PrivateRoute from "@/components/ui/PrivateRoute";
+import { createClient } from "@/lib/supabase/client";
+import type { Benefit } from "@/lib/types";
 
-const benefits = [
-  { company: "ביט — שירותי בנקאות", discount: "הנחה של 20% בעמלות", category: "פיננסי" },
-  { company: "WeWork ישראל", discount: "חצי מחיר חודשי ראשון", category: "עבודה" },
-  { company: "מכון כושר — ספורטלייף", discount: "הנחה של 30%", category: "בריאות" },
-  { company: "כלל ביטוח", discount: "תוכנית ביטוח מותאמת לוותיקים", category: "ביטוח" },
-  { company: "אורט — אקדמיה", discount: "מלגה מיוחדת לבוגרים", category: "אקדמיה" },
-  { company: "משרד עורכי דין מילמן", discount: "ייעוץ משפטי חינם שעה ראשונה", category: "משפטי" },
+const MOCK_BENEFITS: Benefit[] = [
+  { id: "1", company: "ביט — שירותי בנקאות", description: "הנחה של 20% בעמלות", discount_details: "הנחה של 20% בעמלות", is_active: true },
+  { id: "2", company: "WeWork ישראל", description: "חצי מחיר חודשי ראשון", discount_details: "חצי מחיר חודשי ראשון", is_active: true },
+  { id: "3", company: "מכון כושר — ספורטלייף", description: "הנחה של 30%", discount_details: "הנחה של 30%", is_active: true },
+  { id: "4", company: "כלל ביטוח", description: "תוכנית ביטוח מותאמת לוותיקים", discount_details: "תוכנית ביטוח מותאמת לוותיקים", is_active: true },
+  { id: "5", company: "אורט — אקדמיה", description: "מלגה מיוחדת לבוגרים", discount_details: "מלגה מיוחדת לבוגרים", is_active: true },
+  { id: "6", company: "משרד עורכי דין מילמן", description: "ייעוץ משפטי חינם שעה ראשונה", discount_details: "ייעוץ משפטי חינם שעה ראשונה", is_active: true },
 ];
+
+const MOCK_CATEGORIES: Record<string, string> = {
+  "ביט — שירותי בנקאות": "פיננסי",
+  "WeWork ישראל": "עבודה",
+  "מכון כושר — ספורטלייף": "בריאות",
+  "כלל ביטוח": "ביטוח",
+  "אורט — אקדמיה": "אקדמיה",
+  "משרד עורכי דין מילמן": "משפטי",
+};
 
 const jobs = [
   { title: "מנהל אבטחה", company: "בנק לאומי", type: "משרה מלאה" },
@@ -23,10 +37,45 @@ const jobs = [
 const academicResources = [
   { title: "מלגת בוגרי לחימה — האוניברסיטה העברית", amount: "₪5,000 לשנה", deadline: "31.3 בכל שנה" },
   { title: "קורס MBA מוזל — IDC", amount: "הנחה 15%", deadline: "מתמשך" },
-  { title: "מסלול מזורז לתעודת הוראה — מכון מופ\"ת", amount: "הנחה 25%", deadline: "01.09.2025" },
+  { title: 'מסלול מזורז לתעודת הוראה — מכון מופ"ת', amount: "הנחה 25%", deadline: "01.09.2025" },
 ];
 
+function BenefitSkeleton() {
+  return (
+    <div className="card-green-accent p-5 animate-pulse">
+      <div className="flex justify-between mb-3">
+        <div className="h-4 w-40 bg-gray-200 rounded" />
+        <div className="h-4 w-16 bg-gray-100 rounded-full" />
+      </div>
+      <div className="h-3 w-32 bg-gray-100 rounded mb-4" />
+      <div className="h-3 w-20 bg-gray-100 rounded" />
+    </div>
+  );
+}
+
 function BenefitsContent() {
+  const [benefits, setBenefits] = useState<Benefit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data } = await supabase
+          .from("benefits")
+          .select("*")
+          .eq("is_active", true)
+          .order("company");
+        setBenefits(data && data.length > 0 ? data : MOCK_BENEFITS);
+      } catch {
+        setBenefits(MOCK_BENEFITS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
   return (
     <>
       <PageHero
@@ -41,22 +90,42 @@ function BenefitsContent() {
             title="הטבות ושותפויות"
             subtitle={'הנחות ושירותים מיוחדים לבוגרי סיירת נח"ל'}
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {benefits.map((b) => (
-              <div key={b.company} className="card-green-accent p-5 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <h3 className="font-rubik font-bold text-gray-900">{b.company}</h3>
-                  <span className="text-xs bg-green-pale text-green-dark px-2 py-0.5 rounded-full whitespace-nowrap">
-                    {b.category}
-                  </span>
-                </div>
-                <p className="text-green-mid font-semibold text-sm mb-4">{b.discount}</p>
-                <button className="text-xs text-green-dark font-medium hover:underline">
-                  לפרטים ולמימוש ←
-                </button>
-              </div>
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => <BenefitSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {benefits.map((b) => {
+                const category = MOCK_CATEGORIES[b.company] || "כללי";
+                return (
+                  <div key={b.id} className="card-green-accent p-5 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <h3 className="font-rubik font-bold text-gray-900">{b.company}</h3>
+                      <span className="text-xs bg-green-pale text-green-dark px-2 py-0.5 rounded-full whitespace-nowrap">
+                        {category}
+                      </span>
+                    </div>
+                    <p className="text-green-mid font-semibold text-sm mb-4">
+                      {b.discount_details || b.description}
+                    </p>
+                    {b.link ? (
+                      <a
+                        href={b.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-green-dark font-medium hover:underline"
+                      >
+                        לפרטים ולמימוש ←
+                      </a>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-medium">צור קשר עם העמותה</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -113,9 +182,12 @@ function BenefitsContent() {
                   <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap">
                     {job.type}
                   </span>
-                  <button className="text-sm font-semibold text-green-dark hover:text-green-mid transition-colors whitespace-nowrap">
+                  <Link
+                    href="/forum"
+                    className="text-sm font-semibold text-green-dark hover:text-green-mid transition-colors whitespace-nowrap"
+                  >
                     פרטים ←
-                  </button>
+                  </Link>
                 </div>
               </div>
             ))}
@@ -143,9 +215,12 @@ function BenefitsContent() {
                     <p className="text-gray-400 text-xs">הגשה עד: {r.deadline}</p>
                   </div>
                 </div>
-                <button className="text-sm font-semibold text-green-dark hover:underline whitespace-nowrap">
+                <Link
+                  href="/contact"
+                  className="text-sm font-semibold text-green-dark hover:underline whitespace-nowrap"
+                >
                   למידע נוסף
-                </button>
+                </Link>
               </div>
             ))}
           </div>
