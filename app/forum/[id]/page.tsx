@@ -151,13 +151,45 @@ function ForumPostContent() {
         .single();
 
       if (dbPost) {
-        // Real DB post — convert to display format
         const { data: dbReplies } = await supabase
           .from("forum_replies")
           .select("*, author:profiles(full_name, service_years)")
           .eq("post_id", id)
           .order("created_at");
-        // Would map these to MockReply format
+
+        const authorProfile = Array.isArray(dbPost.author) ? dbPost.author[0] : dbPost.author;
+        setPost({
+          id: dbPost.id,
+          title: dbPost.title,
+          category: dbPost.category as Category,
+          author: authorProfile?.full_name || "חבר",
+          serviceYears: authorProfile?.service_years || "",
+          content: dbPost.content,
+          time: new Date(dbPost.created_at).toLocaleDateString("he-IL"),
+          replies: (dbReplies || []).map((r) => {
+            const rAuthor = Array.isArray(r.author) ? r.author[0] : r.author;
+            return {
+              id: r.id,
+              author: rAuthor?.full_name || "חבר",
+              serviceYears: rAuthor?.service_years || "",
+              content: r.content,
+              time: new Date(r.created_at).toLocaleDateString("he-IL"),
+            };
+          }),
+        });
+        setReplies(
+          (dbReplies || []).map((r) => {
+            const rAuthor = Array.isArray(r.author) ? r.author[0] : r.author;
+            return {
+              id: r.id,
+              author: rAuthor?.full_name || "חבר",
+              serviceYears: rAuthor?.service_years || "",
+              content: r.content,
+              time: new Date(r.created_at).toLocaleDateString("he-IL"),
+            };
+          })
+        );
+        return;
       }
 
       // Fall back to mock data
@@ -174,20 +206,41 @@ function ForumPostContent() {
 
   async function handleReply(e: React.FormEvent) {
     e.preventDefault();
-    if (!newReply.trim()) return;
+    if (!newReply.trim() || !post) return;
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 600));
 
-    const newR: MockReply = {
-      id: `new-${Date.now()}`,
-      author: currentUser?.full_name || "חבר",
-      serviceYears: currentUser?.service_years || "",
-      content: newReply.trim(),
-      time: "עכשיו",
-    };
-    setReplies((prev) => [...prev, newR]);
-    setNewReply("");
-    setSubmitting(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: inserted } = await supabase
+          .from("forum_replies")
+          .insert({ post_id: post.id, author_id: user.id, content: newReply.trim() })
+          .select("id, created_at")
+          .single();
+
+        const newR: MockReply = {
+          id: inserted?.id || `new-${Date.now()}`,
+          author: currentUser?.full_name || "חבר",
+          serviceYears: currentUser?.service_years || "",
+          content: newReply.trim(),
+          time: "עכשיו",
+        };
+        setReplies((prev) => [...prev, newR]);
+      } else {
+        const newR: MockReply = {
+          id: `new-${Date.now()}`,
+          author: currentUser?.full_name || "חבר",
+          serviceYears: currentUser?.service_years || "",
+          content: newReply.trim(),
+          time: "עכשיו",
+        };
+        setReplies((prev) => [...prev, newR]);
+      }
+    } finally {
+      setNewReply("");
+      setSubmitting(false);
+    }
   }
 
   if (!post) {
