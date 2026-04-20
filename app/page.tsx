@@ -12,6 +12,7 @@ import {
   Handshake,
 } from "lucide-react";
 import SectionTitle from "@/components/ui/SectionTitle";
+import AnimatedStats from "@/components/ui/AnimatedStats";
 
 const stats = [
   { value: "14+", label: "שנות פעילות" },
@@ -145,20 +146,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 bg-white border-b border-gray-100">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-3 gap-6 text-center">
-            {stats.map((stat) => (
-              <div key={stat.label}>
-                <div className="font-rubik font-black text-4xl sm:text-5xl text-green-dark mb-1">
-                  {stat.value}
-                </div>
-                <div className="text-sm sm:text-base text-gray-500">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <AnimatedStats stats={stats} />
 
       {/* Activities */}
       <section className="section-padding bg-gray-light">
