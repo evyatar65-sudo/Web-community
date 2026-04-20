@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu, X, ChevronDown, Heart, LogIn, User, LogOut, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -193,8 +194,12 @@ export default function Navbar() {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 text-gray-300 hover:text-white transition-colors px-2 py-1.5 rounded hover:bg-white/10"
                 >
-                  <div className="w-8 h-8 rounded-full bg-green-mid flex items-center justify-center text-white text-xs font-bold">
-                    {profile.full_name?.[0] || "מ"}
+                  <div className="w-8 h-8 rounded-full bg-green-mid flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                    {profile.avatar_url ? (
+                      <Image src={profile.avatar_url} alt={profile.full_name} width={32} height={32} className="object-cover w-full h-full" />
+                    ) : (
+                      profile.full_name?.[0] || "מ"
+                    )}
                   </div>
                   <ChevronDown size={12} />
                 </button>

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRef } from "react";
-import { Save, Camera, AlertCircle, CheckCircle } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Save, Camera, AlertCircle, CheckCircle, Lock } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import PageHero from "@/components/ui/PageHero";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +14,10 @@ function ProfileContent() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [passwords, setPasswords] = useState({ current: "", newPw: "", confirm: "" });
+  const [changingPw, setChangingPw] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState(false);
+  const [pwError, setPwError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -77,6 +80,32 @@ function ProfileContent() {
       setError("שגיאה בהעלאת תמונה");
     } finally {
       setAvatarUploading(false);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (passwords.newPw !== passwords.confirm) {
+      setPwError("הסיסמאות אינן תואמות");
+      return;
+    }
+    if (passwords.newPw.length < 8) {
+      setPwError("הסיסמה חייבת להכיל לפחות 8 תווים");
+      return;
+    }
+    setChangingPw(true);
+    setPwError("");
+    setPwSuccess(false);
+    try {
+      const { error: pwErr } = await supabase.auth.updateUser({ password: passwords.newPw });
+      if (pwErr) throw pwErr;
+      setPwSuccess(true);
+      setPasswords({ current: "", newPw: "", confirm: "" });
+      setTimeout(() => setPwSuccess(false), 3000);
+    } catch (err: unknown) {
+      setPwError((err as Error).message || "שגיאה בשינוי סיסמה");
+    } finally {
+      setChangingPw(false);
     }
   }
 
@@ -227,6 +256,63 @@ function ProfileContent() {
                   הצג את הפרופיל שלי במאגר הבוגרים (גלוי לחברים מאושרים בלבד)
                 </label>
               </div>
+            </div>
+
+            {/* Change Password */}
+            <div className="bg-gray-light rounded-2xl p-6">
+              <h3 className="font-rubik font-bold text-lg text-gray-900 mb-5 flex items-center gap-2">
+                <Lock size={18} className="text-gray-600" />
+                שינוי סיסמה
+              </h3>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">סיסמה חדשה</label>
+                    <input
+                      type="password"
+                      value={passwords.newPw}
+                      onChange={(e) => setPasswords((p) => ({ ...p, newPw: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:border-green-dark focus:ring-1 focus:ring-green-dark"
+                      placeholder="לפחות 8 תווים"
+                      minLength={8}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">אימות סיסמה</label>
+                    <input
+                      type="password"
+                      value={passwords.confirm}
+                      onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm bg-white focus:outline-none focus:border-green-dark focus:ring-1 focus:ring-green-dark"
+                      placeholder="חזור על הסיסמה"
+                    />
+                  </div>
+                </div>
+                {pwError && (
+                  <div className="flex items-center gap-2 text-red-600 bg-red-50 rounded-lg p-3 text-sm">
+                    <AlertCircle size={15} className="shrink-0" />
+                    {pwError}
+                  </div>
+                )}
+                {pwSuccess && (
+                  <div className="flex items-center gap-2 text-green-dark bg-green-pale rounded-lg p-3 text-sm">
+                    <CheckCircle size={15} className="shrink-0" />
+                    הסיסמה שונתה בהצלחה
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={changingPw || !passwords.newPw || !passwords.confirm}
+                  className="flex items-center gap-2 border border-gray-300 text-gray-700 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {changingPw ? (
+                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Lock size={14} />
+                  )}
+                  שנה סיסמה
+                </button>
+              </form>
             </div>
 
             {/* Messages */}
