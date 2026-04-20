@@ -430,9 +430,35 @@ function AdminContent() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Mobile tab bar */}
+        <div className="lg:hidden flex overflow-x-auto gap-2 pb-4 mb-4">
+          {(Object.keys(TAB_LABELS) as AdminTab[]).map((tab) => {
+            const Icon = TAB_ICONS[tab];
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab
+                    ? "bg-green-dark text-white"
+                    : "bg-white text-gray-600 border border-gray-200"
+                }`}
+              >
+                <Icon size={13} />
+                {TAB_LABELS[tab]}
+                {tab === "users" && stats.pending > 0 && (
+                  <span className="bg-yellow-400 text-black text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {stats.pending}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex gap-6">
-          {/* Sidebar */}
-          <div className="w-56 shrink-0">
+          {/* Sidebar — desktop only */}
+          <div className="hidden lg:block w-56 shrink-0">
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               {(Object.keys(TAB_LABELS) as AdminTab[]).map((tab) => {
                 const Icon = TAB_ICONS[tab];

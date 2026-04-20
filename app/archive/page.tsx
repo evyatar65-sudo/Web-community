@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
-import { Image as ImageIcon, FileText, Film, Filter, Upload, X } from "lucide-react";
+import { Image as ImageIcon, FileText, Film, Filter, Upload, X, CheckCircle } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import PageHero from "@/components/ui/PageHero";
-import SectionTitle from "@/components/ui/SectionTitle";
+import { createClient } from "@/lib/supabase/client";
 
 type ItemType = "photo" | "document" | "video" | "all";
 
@@ -31,10 +31,121 @@ const TYPE_ICONS = {
   video: Film,
 };
 
+function UploadModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({ title: "", year: new Date().getFullYear(), type: "photo" as "photo" | "document" | "video", description: "" });
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [done, setDone] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setUploading(true);
+    try {
+      let file_url: string | undefined;
+      if (file) {
+        const ext = file.name.split(".").pop();
+        const path = `archive/${Date.now()}.${ext}`;
+        await supabase.storage.from("archive").upload(path, file);
+        const { data } = supabase.storage.from("archive").getPublicUrl(path);
+        file_url = data.publicUrl;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("archive_items").insert({
+        ...form,
+        file_url,
+        is_approved: false,
+        uploaded_by: user?.id,
+      });
+      setDone(true);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-rubik font-bold text-lg">העלאת פריט לארכיון</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+
+        {done ? (
+          <div className="text-center py-8">
+            <CheckCircle size={40} className="text-green-dark mx-auto mb-3" />
+            <p className="font-semibold text-gray-800 mb-1">הפריט הועלה בהצלחה!</p>
+            <p className="text-sm text-gray-500 mb-5">הפריט יוצג לאחר אישור מנהל.</p>
+            <button onClick={onClose} className="bg-green-dark text-white px-6 py-2 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors">
+              סגור
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">כותרת *</label>
+              <input required type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+                placeholder="שם הפריט" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">סוג</label>
+                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as typeof form.type })}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark bg-white">
+                  <option value="photo">תמונה</option>
+                  <option value="document">מסמך</option>
+                  <option value="video">וידאו</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">שנה</label>
+                <input type="number" value={form.year} min={1948} max={new Date().getFullYear()}
+                  onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">תיאור</label>
+              <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark resize-none"
+                placeholder="תיאור קצר של הפריט..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">קובץ</label>
+              <div
+                onClick={() => fileRef.current?.click()}
+                className="border-2 border-dashed border-gray-200 rounded-lg p-5 text-center cursor-pointer hover:border-green-dark transition-colors"
+              >
+                <Upload size={20} className="mx-auto mb-1 text-gray-400" />
+                <p className="text-sm text-gray-500">{file ? file.name : "לחץ לבחירת קובץ"}</p>
+              </div>
+              <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.mp4,.mov"
+                onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button type="submit" disabled={uploading}
+                className="flex-1 bg-green-dark text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60">
+                {uploading ? "מעלה..." : "העלה"}
+              </button>
+              <button type="button" onClick={onClose}
+                className="px-5 py-2.5 rounded-lg text-sm border border-gray-200 text-gray-600 hover:bg-gray-50">
+                ביטול
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ArchiveContent() {
   const [typeFilter, setTypeFilter] = useState<ItemType>("all");
   const [yearFilter, setYearFilter] = useState<number | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
 
   const filtered = MOCK_ARCHIVE.filter((item) => {
     const matchType = typeFilter === "all" || item.type === typeFilter;
@@ -44,6 +155,7 @@ function ArchiveContent() {
 
   return (
     <>
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
       <PageHero
         title="ארכיון היסטורי"
         subtitle={'תמונות, מסמכים ותיעוד מתולדות סיירת נח"ל'}
@@ -89,7 +201,10 @@ function ArchiveContent() {
 
             <div className="flex-1" />
 
-            <button className="flex items-center gap-2 bg-green-pale text-green-dark px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-light hover:text-white transition-colors">
+            <button
+              onClick={() => setShowUpload(true)}
+              className="flex items-center gap-2 bg-green-pale text-green-dark px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-light hover:text-white transition-colors"
+            >
               <Upload size={14} />
               העלאת פריט
             </button>
