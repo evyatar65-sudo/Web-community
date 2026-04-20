@@ -14,6 +14,8 @@ function MembersContent() {
   const [filtered, setFiltered] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
@@ -31,23 +33,32 @@ function MembersContent() {
     load();
   }, []);
 
+  const cities = Array.from(new Set(members.map((m) => m.current_city).filter(Boolean))).sort() as string[];
+  const years = Array.from(
+    new Set(
+      members
+        .map((m) => m.service_years?.match(/\d{4}/)?.[0])
+        .filter(Boolean)
+    )
+  ).sort().reverse() as string[];
+
   useEffect(() => {
-    if (!search.trim()) {
-      setFiltered(members);
-      return;
-    }
     const q = search.toLowerCase();
     setFiltered(
-      members.filter(
-        (m) =>
+      members.filter((m) => {
+        const matchSearch =
+          !q ||
           m.full_name?.toLowerCase().includes(q) ||
           m.role_in_unit?.toLowerCase().includes(q) ||
           m.service_years?.toLowerCase().includes(q) ||
           m.current_city?.toLowerCase().includes(q) ||
-          m.profession?.toLowerCase().includes(q)
-      )
+          m.profession?.toLowerCase().includes(q);
+        const matchCity = !cityFilter || m.current_city === cityFilter;
+        const matchYear = !yearFilter || m.service_years?.includes(yearFilter);
+        return matchSearch && matchCity && matchYear;
+      })
     );
-  }, [search, members]);
+  }, [search, cityFilter, yearFilter, members]);
 
   return (
     <>
@@ -57,8 +68,8 @@ function MembersContent() {
       />
       <section className="section-padding bg-white">
         <div className="container-max">
-          {/* Search */}
-          <div className="max-w-2xl mx-auto mb-8">
+          {/* Search + Filters */}
+          <div className="max-w-3xl mx-auto mb-8 space-y-3">
             <div className="relative">
               <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -77,9 +88,35 @@ function MembersContent() {
                 </button>
               )}
             </div>
-            {search && (
-              <p className="text-sm text-gray-500 mt-2 text-center">
-                נמצאו {filtered.length} תוצאות עבור &quot;{search}&quot;
+            <div className="flex gap-3">
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-green-dark shadow-sm text-gray-600"
+              >
+                <option value="">כל הערים</option>
+                {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:border-green-dark shadow-sm text-gray-600"
+              >
+                <option value="">כל השנים</option>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+              {(cityFilter || yearFilter) && (
+                <button
+                  onClick={() => { setCityFilter(""); setYearFilter(""); }}
+                  className="px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl bg-white shadow-sm"
+                >
+                  נקה
+                </button>
+              )}
+            </div>
+            {(search || cityFilter || yearFilter) && (
+              <p className="text-sm text-gray-500 text-center">
+                נמצאו {filtered.length} חברים
               </p>
             )}
           </div>
