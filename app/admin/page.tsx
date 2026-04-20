@@ -590,6 +590,49 @@ function AllMembersTab() {
 
 function DonationsTab() {
   const mockStats = { total: "₪127,450", monthly: "₪12,300", donors: 84 };
+  const [exporting, setExporting] = useState(false);
+  const supabase = createClient();
+
+  async function handleExportMembers() {
+    setExporting(true);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name,personal_id,service_years,role_in_unit,phone,current_city,profession,status,role,created_at")
+        .order("created_at", { ascending: false });
+
+      if (!data || data.length === 0) return;
+
+      const headers = ["שם מלא", "מספר אישי", "שנות שירות", "תפקיד", "טלפון", "עיר", "עיסוק", "סטטוס", "תפקיד מערכת", "נרשם"];
+      const rows = data.map((m) => [
+        m.full_name,
+        m.personal_id || "",
+        m.service_years || "",
+        m.role_in_unit || "",
+        m.phone || "",
+        m.current_city || "",
+        m.profession || "",
+        m.status,
+        m.role,
+        new Date(m.created_at).toLocaleDateString("he-IL"),
+      ]);
+
+      const csv = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `members-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -604,10 +647,20 @@ function DonationsTab() {
           </div>
         ))}
       </div>
-      <button className="flex items-center gap-2 bg-green-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors">
-        <Download size={14} />
-        ייצוא CSV
-      </button>
+      <div className="flex gap-3">
+        <button
+          onClick={handleExportMembers}
+          disabled={exporting}
+          className="flex items-center gap-2 bg-green-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60"
+        >
+          {exporting ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Download size={14} />
+          )}
+          ייצוא חברים CSV
+        </button>
+      </div>
     </div>
   );
 }

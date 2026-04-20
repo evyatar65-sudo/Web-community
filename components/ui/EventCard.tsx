@@ -5,6 +5,7 @@ import type { Event } from "@/lib/types";
 interface EventCardProps {
   event: Event;
   showRsvp?: boolean;
+  rsvpCount?: number;
 }
 
 function formatDate(dateStr: string) {
@@ -22,7 +23,7 @@ function formatTime(dateStr: string) {
   return date.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function EventCard({ event, showRsvp = false }: EventCardProps) {
+export default function EventCard({ event, showRsvp = false, rsvpCount }: EventCardProps) {
   const isPast = new Date(event.date) < new Date();
 
   return (
@@ -72,12 +73,20 @@ export default function EventCard({ event, showRsvp = false }: EventCardProps) {
           </div>
         </div>
       </div>
-      {showRsvp && !isPast && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <span className="inline-flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded text-sm font-semibold group-hover:bg-green-mid transition-colors">
-            <Users size={14} />
-            לפרטים ואישור הגעה
-          </span>
+      {(showRsvp || rsvpCount !== undefined) && !isPast && (
+        <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
+          {showRsvp && (
+            <span className="inline-flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded text-sm font-semibold group-hover:bg-green-mid transition-colors">
+              <Users size={14} />
+              לפרטים ואישור הגעה
+            </span>
+          )}
+          {rsvpCount !== undefined && rsvpCount > 0 && (
+            <span className="text-xs text-gray-400 flex items-center gap-1 mr-auto">
+              <Users size={11} />
+              {rsvpCount} אישרו הגעה
+            </span>
+          )}
         </div>
       )}
     </Link>
