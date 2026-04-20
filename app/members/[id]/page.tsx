@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Briefcase, Calendar, ArrowRight } from "lucide-react";
+import { MapPin, Briefcase, Calendar, ArrowRight, Phone, MessageSquare } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
@@ -118,6 +118,29 @@ function MemberProfileContent() {
                   </div>
                 </div>
               )}
+              {member.phone && (
+                <div className="flex items-center gap-3 text-gray-700">
+                  <div className="w-9 h-9 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+                    <Phone size={16} className="text-green-dark" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">טלפון</p>
+                    <a href={`tel:${member.phone}`} className="font-medium text-green-dark hover:underline">
+                      {member.phone}
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <Link
+                href="/forum"
+                className="inline-flex items-center gap-2 bg-green-pale text-green-dark px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-dark hover:text-white transition-colors"
+              >
+                <MessageSquare size={15} />
+                פנה בפורום הקהילה
+              </Link>
             </div>
           </div>
         </div>

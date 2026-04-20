@@ -111,10 +111,14 @@ function EventDetailContent() {
       }
 
       setEvent(eventData);
-      setRsvpCount((eventData as Event & { rsvp_count?: number }).rsvp_count || 0);
 
-      // Check if user has RSVP'd
-      const { data: { user } } = await supabase.auth.getUser();
+      // Load real RSVP count and user's own RSVP in parallel
+      const [{ count: rsvpTotal }, { data: { user } }] = await Promise.all([
+        supabase.from("rsvps").select("*", { count: "exact", head: true }).eq("event_id", id),
+        supabase.auth.getUser(),
+      ]);
+      setRsvpCount(rsvpTotal ?? (eventData as Event & { rsvp_count?: number }).rsvp_count ?? 0);
+
       if (user) {
         const { data: rsvp } = await supabase
           .from("rsvps")
