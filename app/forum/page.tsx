@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Plus, Clock, Send } from "lucide-react";
+import { MessageSquare, Plus, Clock, Send, Search } from "lucide-react";
 import Link from "next/link";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import PageHero from "@/components/ui/PageHero";
@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Category = "כללי" | "מקצועי" | "חברתי" | "ציוד ומילואים";
 
-interface MockPost {
+interface Post {
   id: string;
   title: string;
   category: Category;
@@ -23,7 +23,7 @@ interface MockPost {
 
 const CATEGORIES: Category[] = ["כללי", "מקצועי", "חברתי", "ציוד ומילואים"];
 
-const MOCK_POSTS: MockPost[] = [
+const MOCK_POSTS: Post[] = [
   {
     id: "1",
     title: "שאלה לגבי הטבות נכים — מישהו עבר את התהליך?",
@@ -52,7 +52,7 @@ const MOCK_POSTS: MockPost[] = [
     serviceYears: "2008–2012",
     replies: 5,
     time: "אתמול",
-    preview: "מתכנן ריצה של 10 ק\"מ בירקון, 7 בבוקר. מי מצטרף?",
+    preview: 'מתכנן ריצה של 10 ק"מ בירקון, 7 בבוקר. מי מצטרף?',
   },
   {
     id: "4",
@@ -83,8 +83,42 @@ const CATEGORY_COLORS: Record<Category, string> = {
   "ציוד ומילואים": "bg-orange-100 text-orange-700",
 };
 
+function relativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `לפני ${mins || 1} דקות`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `לפני ${hours} שעות`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "אתמול";
+  if (days < 7) return `לפני ${days} ימים`;
+  return new Date(dateStr).toLocaleDateString("he-IL");
+}
+
+function PostSkeleton() {
+  return (
+    <div className="card-green-accent p-5 animate-pulse">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="h-4 w-20 bg-gray-200 rounded-full mb-3" />
+          <div className="h-5 w-3/4 bg-gray-200 rounded mb-2" />
+          <div className="h-4 w-full bg-gray-100 rounded mb-4" />
+          <div className="flex gap-4">
+            <div className="h-3 w-24 bg-gray-100 rounded" />
+            <div className="h-3 w-16 bg-gray-100 rounded" />
+          </div>
+        </div>
+        <div className="w-10 h-10 bg-gray-100 rounded-lg shrink-0" />
+      </div>
+    </div>
+  );
+}
+
 function ForumContent() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<Category | "הכל">("הכל");
+  const [search, setSearch] = useState("");
   const [showNewPost, setShowNewPost] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", category: CATEGORIES[0], content: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -92,10 +126,51 @@ function ForumContent() {
   const router = useRouter();
   const supabase = createClient();
 
-  const filtered =
-    activeCategory === "הכל"
-      ? MOCK_POSTS
-      : MOCK_POSTS.filter((p) => p.category === activeCategory);
+  const loadPosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("forum_posts")
+        .select("*, author:profiles(full_name, service_years), replies:forum_replies(count)")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (data && data.length > 0) {
+        setPosts(
+          data.map((p) => {
+            const authorProfile = Array.isArray(p.author) ? p.author[0] : p.author;
+            return {
+              id: p.id,
+              title: p.title,
+              category: p.category as Category,
+              author: authorProfile?.full_name || "חבר",
+              serviceYears: authorProfile?.service_years || "",
+              replies: Array.isArray(p.replies) ? p.replies[0]?.count ?? 0 : 0,
+              time: relativeTime(p.created_at),
+              preview: p.content.slice(0, 120),
+            };
+          })
+        );
+      } else {
+        setPosts(MOCK_POSTS);
+      }
+    } catch {
+      setPosts(MOCK_POSTS);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
+
+  const filtered = posts.filter((p) => {
+    const matchCat = activeCategory === "הכל" || p.category === activeCategory;
+    const q = search.toLowerCase();
+    const matchSearch = !q || p.title.toLowerCase().includes(q) || p.preview.toLowerCase().includes(q) || p.author.toLowerCase().includes(q);
+    return matchCat && matchSearch;
+  });
 
   async function handlePublish() {
     if (!newPost.title.trim() || !newPost.content.trim()) {
@@ -118,6 +193,7 @@ function ForumContent() {
       } else {
         setShowNewPost(false);
         setNewPost({ title: "", category: CATEGORIES[0], content: "" });
+        loadPosts();
       }
     } catch {
       setPostError("שגיאה בפרסום. נסה שוב.");
@@ -135,7 +211,27 @@ function ForumContent() {
 
       <section className="section-padding bg-white">
         <div className="container-max max-w-4xl">
-          {/* Header actions */}
+          {/* Search */}
+          <div className="relative mb-5">
+            <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="חיפוש בפורום..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-11 text-sm focus:outline-none focus:border-green-dark focus:ring-1 focus:ring-green-dark bg-white shadow-sm"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Category filter + new post */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2 flex-wrap">
               {(["הכל", ...CATEGORIES] as const).map((cat) => (
@@ -154,7 +250,7 @@ function ForumContent() {
             </div>
             <button
               onClick={() => setShowNewPost(true)}
-              className="flex items-center gap-2 bg-green-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors"
+              className="flex items-center gap-2 bg-green-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors shrink-0"
             >
               <Plus size={16} />
               פוסט חדש
@@ -215,54 +311,68 @@ function ForumContent() {
           )}
 
           {/* Posts list */}
-          <div className="space-y-3">
-            {filtered.map((post) => (
-              <Link
-                key={post.id}
-                href={`/forum/${post.id}`}
-                className="card-green-accent p-5 hover:shadow-md transition-shadow group block"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[post.category]}`}>
-                        {post.category}
-                      </span>
-                    </div>
-                    <h3 className="font-rubik font-bold text-gray-900 text-base group-hover:text-green-dark transition-colors mb-1">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-gray-500 line-clamp-1">{post.preview}</p>
-                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <div className="w-5 h-5 rounded-full bg-green-pale flex items-center justify-center text-green-dark font-bold text-xs">
-                          {post.author[0]}
-                        </div>
-                        {post.author} | {post.serviceYears}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock size={10} />
-                        {post.time}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 flex flex-col items-center text-center">
-                    <div className="flex items-center gap-1 text-gray-400">
-                      <MessageSquare size={14} />
-                      <span className="text-sm font-medium">{post.replies}</span>
-                    </div>
-                    <span className="text-xs text-gray-300">תגובות</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="text-center py-20 text-gray-400">
-              <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
-              <p>אין פוסטים בקטגוריה זו</p>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => <PostSkeleton key={i} />)}
             </div>
+          ) : (
+            <>
+              {search && (
+                <p className="text-sm text-gray-400 mb-3">
+                  נמצאו {filtered.length} תוצאות
+                </p>
+              )}
+              <div className="space-y-3">
+                {filtered.map((post) => (
+                  <Link
+                    key={post.id}
+                    href={`/forum/${post.id}`}
+                    className="card-green-accent p-5 hover:shadow-md transition-shadow group block"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${CATEGORY_COLORS[post.category] || "bg-gray-100 text-gray-600"}`}>
+                            {post.category}
+                          </span>
+                        </div>
+                        <h3 className="font-rubik font-bold text-gray-900 text-base group-hover:text-green-dark transition-colors mb-1">
+                          {post.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 line-clamp-1">{post.preview}</p>
+                        <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                          <span className="flex items-center gap-1">
+                            <div className="w-5 h-5 rounded-full bg-green-pale flex items-center justify-center text-green-dark font-bold text-xs">
+                              {post.author[0]}
+                            </div>
+                            {post.author}
+                            {post.serviceYears && ` | ${post.serviceYears}`}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock size={10} />
+                            {post.time}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-center text-center">
+                        <div className="flex items-center gap-1 text-gray-400">
+                          <MessageSquare size={14} />
+                          <span className="text-sm font-medium">{post.replies}</span>
+                        </div>
+                        <span className="text-xs text-gray-300">תגובות</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {filtered.length === 0 && (
+                <div className="text-center py-20 text-gray-400">
+                  <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
+                  <p>{search ? `אין תוצאות עבור "${search}"` : "אין פוסטים בקטגוריה זו"}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
