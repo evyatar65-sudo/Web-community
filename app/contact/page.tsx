@@ -191,14 +191,14 @@ export default function ContactPage() {
                     { Icon: Instagram, label: "אינסטגרם", color: "bg-pink-500" },
                     { Icon: MessageCircle, label: "וואטסאפ", color: "bg-green-500" },
                   ].map(({ Icon, label, color }) => (
-                    <a
+                    <span
                       key={label}
-                      href="#"
+                      title="בקרוב"
                       aria-label={label}
-                      className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white hover:opacity-90 transition-opacity shadow-sm`}
+                      className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center text-white shadow-sm opacity-50 cursor-default`}
                     >
                       <Icon size={20} />
-                    </a>
+                    </span>
                   ))}
                 </div>
               </div>

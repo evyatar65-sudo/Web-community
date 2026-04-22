@@ -25,27 +25,20 @@ export default function Footer() {
               חברה, מורשת, שייכות. קהילת בוגרי סיירת נח&quot;ל — יחד מחוץ לשדה הקרב, כפי שהיינו בו.
             </p>
             <div className="flex items-center gap-3">
-              <a
-                href="#"
-                aria-label="פייסבוק"
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-green-mid transition-colors"
-              >
-                <Facebook size={16} />
-              </a>
-              <a
-                href="#"
-                aria-label="אינסטגרם"
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-green-mid transition-colors"
-              >
-                <Instagram size={16} />
-              </a>
-              <a
-                href="#"
-                aria-label="וואטסאפ"
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-green-mid transition-colors"
-              >
-                <MessageCircle size={16} />
-              </a>
+              {[
+                { Icon: Facebook, label: "פייסבוק" },
+                { Icon: Instagram, label: "אינסטגרם" },
+                { Icon: MessageCircle, label: "וואטסאפ" },
+              ].map(({ Icon, label }) => (
+                <span
+                  key={label}
+                  title="בקרוב"
+                  aria-label={label}
+                  className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-300 cursor-default opacity-60"
+                >
+                  <Icon size={16} />
+                </span>
+              ))}
             </div>
           </div>
 

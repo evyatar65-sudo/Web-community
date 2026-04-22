@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift, Flame, Heart, Mail, MailOpen, Briefcase, GraduationCap } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
+import { useToast } from "@/components/ui/ToastProvider";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile, Event, ArchiveItem, Benefit, Fallen, Donation, ContactMessage, Job, AcademicResource } from "@/lib/types";
 
@@ -38,6 +39,7 @@ function PendingUsersTab() {
   const [pending, setPending] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => {
@@ -59,6 +61,7 @@ function PendingUsersTab() {
     await supabase.from("profiles").update({ status: "approved" }).eq("id", id);
     setPending((prev) => prev.filter((p) => p.id !== id));
     setProcessing(null);
+    toast("החבר אושר בהצלחה");
   }
 
   async function reject(id: string) {
@@ -66,6 +69,7 @@ function PendingUsersTab() {
     await supabase.from("profiles").update({ status: "rejected" }).eq("id", id);
     setPending((prev) => prev.filter((p) => p.id !== id));
     setProcessing(null);
+    toast("הבקשה נדחתה", "info");
   }
 
   if (loading) {
@@ -255,6 +259,7 @@ function EventsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => {
@@ -269,8 +274,10 @@ function EventsTab() {
   async function handleSave(form: EventForm) {
     if (editingEvent) {
       await supabase.from("events").update(form).eq("id", editingEvent.id);
+      toast("האירוע עודכן");
     } else {
       await supabase.from("events").insert(form);
+      toast("האירוע נוסף בהצלחה");
     }
     await load();
     setShowModal(false);
@@ -283,6 +290,7 @@ function EventsTab() {
     await supabase.from("events").delete().eq("id", id);
     setEvents((prev) => prev.filter((e) => e.id !== id));
     setDeleting(null);
+    toast("האירוע נמחק", "info");
   }
 
   function openEdit(e: Event) {
@@ -369,6 +377,7 @@ function ArchiveTab() {
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => {
@@ -390,6 +399,7 @@ function ArchiveTab() {
     await supabase.from("archive_items").update({ is_approved: true }).eq("id", id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     setProcessing(null);
+    toast("הפריט אושר ויוצג בארכיון");
   }
 
   async function reject(id: string) {
@@ -397,6 +407,7 @@ function ArchiveTab() {
     await supabase.from("archive_items").delete().eq("id", id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     setProcessing(null);
+    toast("הפריט נמחק", "info");
   }
 
   const TYPE_LABELS: Record<string, string> = { photo: "תמונה", document: "מסמך", video: "וידאו" };
@@ -466,6 +477,7 @@ function AllMembersTab() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => {
@@ -501,6 +513,7 @@ function AllMembersTab() {
     await supabase.from("profiles").update({ status }).eq("id", id);
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
     setProcessing(null);
+    toast(status === "approved" ? "החבר אושר" : "החבר נדחה", status === "approved" ? "success" : "info");
   }
 
   async function toggleRole(id: string, currentRole: string) {
@@ -509,6 +522,7 @@ function AllMembersTab() {
     await supabase.from("profiles").update({ role: newRole }).eq("id", id);
     setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, role: newRole as "member" | "admin" } : m)));
     setProcessing(null);
+    toast(newRole === "admin" ? "הוגדר כמנהל" : "הוגדר כחבר רגיל", "info");
   }
 
   if (loading) {
@@ -925,6 +939,7 @@ function FallenTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Fallen | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => { load(); }, []);
@@ -939,8 +954,10 @@ function FallenTab() {
     const payload = { name: form.name, role: form.role || null, year: Number(form.year), bio: form.bio || null, photo_url: form.photo_url || null };
     if (editing) {
       await supabase.from("fallen").update(payload).eq("id", editing.id);
+      toast("הרשומה עודכנה");
     } else {
       await supabase.from("fallen").insert(payload);
+      toast("הנופל נוסף לזיכרון");
     }
     await load();
     setShowModal(false);
@@ -953,6 +970,7 @@ function FallenTab() {
     await supabase.from("fallen").delete().eq("id", id);
     setItems((prev) => prev.filter((f) => f.id !== id));
     setDeleting(null);
+    toast("הרשומה נמחקה", "info");
   }
 
   const modalInitial: FallenForm = editing
@@ -1146,6 +1164,7 @@ function BenefitsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Benefit | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => { load(); }, []);
@@ -1160,8 +1179,10 @@ function BenefitsTab() {
     const payload = { company: form.company, description: form.description || null, discount_details: form.discount_details, category: form.category || null, link: form.link || null, is_active: form.is_active };
     if (editing) {
       await supabase.from("benefits").update(payload).eq("id", editing.id);
+      toast("ההטבה עודכנה");
     } else {
       await supabase.from("benefits").insert(payload);
+      toast("ההטבה נוספה בהצלחה");
     }
     await load();
     setShowModal(false);
@@ -1174,6 +1195,7 @@ function BenefitsTab() {
     await supabase.from("benefits").delete().eq("id", id);
     setBenefits((prev) => prev.filter((b) => b.id !== id));
     setDeleting(null);
+    toast("ההטבה נמחקה", "info");
   }
 
   async function toggleActive(b: Benefit) {
@@ -1331,6 +1353,7 @@ function JobsTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Job | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => { load(); }, []);
@@ -1345,8 +1368,10 @@ function JobsTab() {
     const payload = { title: form.title, company: form.company, type: form.type, description: form.description || null, link: form.link || null, is_active: form.is_active };
     if (editing) {
       await supabase.from("jobs").update(payload).eq("id", editing.id);
+      toast("המשרה עודכנה");
     } else {
       await supabase.from("jobs").insert(payload);
+      toast("המשרה נוספה בהצלחה");
     }
     await load();
     setShowModal(false);
@@ -1359,6 +1384,7 @@ function JobsTab() {
     await supabase.from("jobs").delete().eq("id", id);
     setJobs((prev) => prev.filter((j) => j.id !== id));
     setDeleting(null);
+    toast("המשרה נמחקה", "info");
   }
 
   async function toggleActive(j: Job) {
@@ -1489,6 +1515,7 @@ function AcademicTab() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AcademicResource | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => { load(); }, []);
@@ -1503,8 +1530,10 @@ function AcademicTab() {
     const payload = { title: form.title, amount: form.amount, deadline: form.deadline || null, link: form.link || null, is_active: form.is_active };
     if (editing) {
       await supabase.from("academic_resources").update(payload).eq("id", editing.id);
+      toast("המשאב עודכן");
     } else {
       await supabase.from("academic_resources").insert(payload);
+      toast("המשאב נוסף בהצלחה");
     }
     await load();
     setShowModal(false);
@@ -1517,6 +1546,7 @@ function AcademicTab() {
     await supabase.from("academic_resources").delete().eq("id", id);
     setItems((prev) => prev.filter((r) => r.id !== id));
     setDeleting(null);
+    toast("הרשומה נמחקה", "info");
   }
 
   async function toggleActive(r: AcademicResource) {

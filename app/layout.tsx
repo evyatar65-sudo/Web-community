@@ -3,6 +3,7 @@ import { Heebo, Rubik } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 const heebo = Heebo({
   subsets: ["hebrew", "latin"],
@@ -52,9 +53,11 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl" className={`${heebo.variable} ${rubik.variable}`}>
       <body className="font-heebo antialiased">
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <ToastProvider>
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </ToastProvider>
       </body>
     </html>
   );

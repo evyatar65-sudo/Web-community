@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Download, FileText, Users, Target, Heart } from "lucide-react";
+import Link from "next/link";
+import { FileText, Users, Target, Heart, ArrowLeft } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
 
@@ -225,13 +226,14 @@ export default function AboutPage() {
                     <div className="text-xs text-gray-400">{doc.year} | {doc.size}</div>
                   </div>
                 </div>
-                <button
-                  className="flex items-center gap-1.5 text-green-dark hover:text-green-mid transition-colors text-sm font-medium"
-                  aria-label={`הורד ${doc.name}`}
+                <Link
+                  href="/contact"
+                  className="flex items-center gap-1 text-green-dark hover:text-green-mid transition-colors text-xs font-medium whitespace-nowrap"
+                  aria-label={`בקש ${doc.name}`}
                 >
-                  <Download size={16} />
-                  הורד
-                </button>
+                  בקש מסמך
+                  <ArrowLeft size={12} />
+                </Link>
               </div>
             ))}
           </div>
