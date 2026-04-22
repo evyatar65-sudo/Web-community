@@ -92,9 +92,28 @@ CREATE TABLE IF NOT EXISTS benefits (
   is_active BOOLEAN DEFAULT true
 );
 
--- ============================================================
--- Row Level Security (RLS)
--- ============================================================
+-- 9. Donations (pledge tracking)
+CREATE TABLE IF NOT EXISTS donations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  amount INT NOT NULL CHECK (amount > 0),
+  is_recurring BOOLEAN DEFAULT false,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Contact Messages
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
@@ -104,6 +123,8 @@ ALTER TABLE forum_replies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archive_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE benefits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fallen ENABLE ROW LEVEL SECURITY;
+ALTER TABLE donations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 
 -- PROFILES policies
 CREATE POLICY "Public profiles are viewable by approved members"
@@ -277,6 +298,34 @@ CREATE INDEX IF NOT EXISTS idx_forum_posts_category ON forum_posts(category);
 CREATE INDEX IF NOT EXISTS idx_forum_replies_post ON forum_replies(post_id);
 CREATE INDEX IF NOT EXISTS idx_archive_approved ON archive_items(is_approved);
 CREATE INDEX IF NOT EXISTS idx_fallen_year ON fallen(year);
+CREATE INDEX IF NOT EXISTS idx_donations_user ON donations(user_id);
+CREATE INDEX IF NOT EXISTS idx_contact_messages_read ON contact_messages(is_read);
+
+-- DONATIONS policies
+CREATE POLICY "Users can create their own donations"
+  ON donations FOR INSERT
+  WITH CHECK (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "Users can view their own donations"
+  ON donations FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage donations"
+  ON donations FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
+
+-- CONTACT MESSAGES policies
+CREATE POLICY "Anyone can submit contact messages"
+  ON contact_messages FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Admins can manage contact messages"
+  ON contact_messages FOR ALL
+  USING (
+    EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+  );
 
 -- ============================================================
 -- Storage Buckets

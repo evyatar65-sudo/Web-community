@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { Download, FileText, Users, Target, Heart } from "lucide-react";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
@@ -10,26 +9,40 @@ export const metadata: Metadata = {
 };
 
 const teamMembers = [
-  { name: "אלון כהן", role: "יושב ראש", seed: "team1", years: "2012-2016" },
-  { name: "מיכל לוי", role: "מנכ\"ל/ית", seed: "team2", years: "2008-2012" },
-  { name: "יואב שפירא", role: "גזבר", seed: "team3", years: "2005-2009" },
-  { name: "תמר גולן", role: "מזכירה", seed: "team4", years: "2015-2019" },
+  { name: "אלון כהן", role: "יושב ראש", years: "2012–2016" },
+  { name: "מיכל לוי", role: 'מנכ"ל/ית', years: "2008–2012" },
+  { name: "יואב שפירא", role: "גזבר", years: "2005–2009" },
+  { name: "תמר גולן", role: "מזכירה", years: "2015–2019" },
 ];
 
 const boardMembers = [
-  { name: "גיל אברהם", role: "יו\"ר ועד", years: "1998-2002" },
-  { name: "דנה כץ", role: "חבר ועד", years: "2003-2007" },
-  { name: "עמיר שחר", role: "חבר ועד", years: "2010-2014" },
-  { name: "ליאת מורן", role: "חבר ועד", years: "2018-2022" },
-  { name: "נועם ברק", role: "חבר ועד", years: "2007-2011" },
+  { name: "גיל אברהם", role: 'יו"ר ועד', years: "1998–2002" },
+  { name: "דנה כץ", role: "חבר ועד", years: "2003–2007" },
+  { name: "עמיר שחר", role: "חבר ועד", years: "2010–2014" },
+  { name: "ליאת מורן", role: "חבר ועד", years: "2018–2022" },
+  { name: "נועם ברק", role: "חבר ועד", years: "2007–2011" },
 ];
 
 const documents = [
   { name: "תקנון העמותה", year: "2024", size: "PDF, 420KB" },
-  { name: "דו\"ח כספי 2023", year: "2023", size: "PDF, 1.2MB" },
-  { name: "דו\"ח פעילות 2023", year: "2023", size: "PDF, 890KB" },
+  { name: 'דו"ח כספי 2023', year: "2023", size: "PDF, 1.2MB" },
+  { name: 'דו"ח פעילות 2023', year: "2023", size: "PDF, 890KB" },
   { name: "תקציב 2024", year: "2024", size: "PDF, 340KB" },
 ];
+
+function Initials({ name, size = "lg" }: { name: string; size?: "sm" | "lg" }) {
+  const parts = name.split(" ");
+  const initials = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
+  return (
+    <div
+      className={`rounded-full bg-green-dark flex items-center justify-center text-white font-rubik font-bold ${
+        size === "lg" ? "w-28 h-28 text-3xl border-4 border-green-pale" : "w-10 h-10 text-sm"
+      }`}
+    >
+      {initials}
+    </div>
+  );
+}
 
 export default function AboutPage() {
   return (
@@ -74,17 +87,26 @@ export default function AboutPage() {
                 })}
               </div>
             </div>
+            {/* Decorative panel replacing the picsum image */}
             <div className="relative">
-              <Image
-                src="https://picsum.photos/seed/about1/600/450"
-                alt='עמותת בוגרי סיירת נח"ל'
-                width={600}
-                height={450}
-                className="rounded-2xl shadow-lg object-cover w-full"
-              />
-              <div
-                className="absolute -bottom-4 -right-4 bg-green-dark text-white rounded-xl p-4 text-center shadow-xl"
-              >
+              <div className="rounded-2xl overflow-hidden shadow-lg aspect-[4/3] bg-gradient-to-br from-green-darkest to-green-mid flex flex-col items-center justify-center gap-6 p-8" style={{ background: "linear-gradient(135deg, #1a2e1a 0%, #3d7a35 100%)" }}>
+                <div className="w-24 h-24 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center">
+                  <span className="text-white font-rubik font-black text-4xl">סנ</span>
+                </div>
+                <div className="text-center">
+                  <p className="text-white font-rubik font-bold text-xl">עמותת בוגרי סיירת נח&quot;ל</p>
+                  <p className="text-green-light text-sm mt-1">מחויבות, יחד, מורשת</p>
+                </div>
+                <div className="grid grid-cols-3 gap-4 w-full">
+                  {[["2010", "שנת ייסוד"], ["500+", "חברים"], ["14+", "שנות פעילות"]].map(([v, l]) => (
+                    <div key={l} className="text-center">
+                      <div className="text-white font-rubik font-bold text-xl">{v}</div>
+                      <div className="text-green-light text-xs">{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="absolute -bottom-4 -right-4 bg-green-dark text-white rounded-xl p-4 text-center shadow-xl">
                 <div className="font-rubik font-black text-3xl">2010</div>
                 <div className="text-xs text-green-light">שנת ייסוד</div>
               </div>
@@ -97,14 +119,18 @@ export default function AboutPage() {
       <section className="section-padding bg-gray-light" id="unit">
         <div className="container-max">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Decorative panel */}
             <div className="order-2 lg:order-1">
-              <Image
-                src="https://picsum.photos/seed/about2/600/400"
-                alt='סיירת נח"ל'
-                width={600}
-                height={400}
-                className="rounded-2xl shadow-lg object-cover w-full"
-              />
+              <div className="rounded-2xl overflow-hidden shadow-lg aspect-[3/2] flex items-center justify-center p-10" style={{ background: "linear-gradient(135deg, #2d5a27 0%, #1a2e1a 100%)" }}>
+                <div className="text-center space-y-4">
+                  <div className="text-green-light font-rubik font-bold text-sm tracking-widest uppercase">סיירת נח&quot;ל</div>
+                  <div className="text-white font-rubik font-black text-3xl leading-tight">יחידת<br/>הסיור העוצבתית</div>
+                  <div className="h-px w-16 bg-green-light/40 mx-auto" />
+                  <div className="text-gray-300 text-sm leading-relaxed max-w-xs">
+                    לחימה, מודיעין, גיבוש — ערכים שממשיכים גם לאחר השחרור
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="order-1 lg:order-2">
               <SectionTitle title="אודות הסיירת" centered={false} />
@@ -133,17 +159,11 @@ export default function AboutPage() {
             title="צוות העמותה"
             subtitle="האנשים המניעים את העמותה מאחורי הקלעים"
           />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {teamMembers.map((member) => (
               <div key={member.name} className="text-center group">
-                <div className="relative mb-4 inline-block">
-                  <Image
-                    src={`https://picsum.photos/seed/${member.seed}/200/200`}
-                    alt={member.name}
-                    width={120}
-                    height={120}
-                    className="rounded-full object-cover w-28 h-28 mx-auto border-4 border-green-pale group-hover:border-green-light transition-colors"
-                  />
+                <div className="flex justify-center mb-4 group-hover:scale-105 transition-transform">
+                  <Initials name={member.name} size="lg" />
                 </div>
                 <h3 className="font-rubik font-bold text-gray-900 text-lg">{member.name}</h3>
                 <p className="text-green-mid font-medium text-sm">{member.role}</p>
@@ -170,9 +190,7 @@ export default function AboutPage() {
                 }`}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-green-dark text-white flex items-center justify-center font-bold text-sm">
-                    {member.name[0]}
-                  </div>
+                  <Initials name={member.name} size="sm" />
                   <div>
                     <div className="font-rubik font-bold text-gray-900">{member.name}</div>
                     <div className="text-sm text-green-mid">{member.role}</div>

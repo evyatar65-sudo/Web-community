@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import { Shield, Heart, Users, Star, ChevronLeft } from "lucide-react";
+import { Shield, Heart, Users, Star, ChevronLeft, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import PageHero from "@/components/ui/PageHero";
-import SectionTitle from "@/components/ui/SectionTitle";
 
 export const metadata: Metadata = {
   title: `פעילויות — עמותת בוגרי סיירת נח"ל`,
@@ -13,13 +11,12 @@ export const metadata: Metadata = {
 const activities = [
   {
     id: "active-unit",
-    icon: Shield,
+    Icon: Shield,
     title: "תמיכה בסיירת הפעילה",
     subtitle: "חיבור בין עבר להווה",
-    description: `עמותת הבוגרים שומרת על קשר חי עם הסיירת הפעילה. אנו מממנים ציוד
-    מיוחד, מסייעים בארגון פעילויות ואירועים ליחידה, ומאפשרים מפגשים בין
-    חיילים פעילים לבוגרים ותיקים — חיבור שמחזק את תחושת המשכיות ושייכות לסיירת.`,
-    image: "https://picsum.photos/seed/activity1/700/400",
+    color: "from-green-darkest to-green-mid",
+    description:
+      "עמותת הבוגרים שומרת על קשר חי עם הסיירת הפעילה. אנו מממנים ציוד מיוחד, מסייעים בארגון פעילויות ואירועים ליחידה, ומאפשרים מפגשים בין חיילים פעילים לבוגרים ותיקים — חיבור שמחזק את תחושת המשכיות ושייכות לסיירת.",
     highlights: [
       "מימון ציוד ייחודי ליחידה",
       "פעילויות גיבוש לחיילים פעילים",
@@ -29,13 +26,12 @@ const activities = [
   },
   {
     id: "wounded",
-    icon: Heart,
+    Icon: Heart,
     title: "ליווי פצועים",
     subtitle: "לא מפקירים אף אחד",
-    description: `בוגרים שנפצעו בשירותם זכאים לתמיכה מלאה מצד העמותה. צוות מסור
-    של בוגרים ועובדים סוציאליים מלווה את הפצועים בתהליך השיקום — מהאשפוז
-    ועד לחזרה לשגרה. התמיכה כוללת ממד רגשי, רפואי, משפטי וכלכלי.`,
-    image: "https://picsum.photos/seed/activity2/700/400",
+    color: "from-red-900 to-red-700",
+    description:
+      "בוגרים שנפצעו בשירותם זכאים לתמיכה מלאה מצד העמותה. צוות מסור של בוגרים ועובדים סוציאליים מלווה את הפצועים בתהליך השיקום — מהאשפוז ועד לחזרה לשגרה. התמיכה כוללת ממד רגשי, רפואי, משפטי וכלכלי.",
     highlights: [
       "ליווי אישי בתהליך השיקום",
       "סיוע בהתמודדות עם הבירוקרטיה",
@@ -45,13 +41,12 @@ const activities = [
   },
   {
     id: "bereaved",
-    icon: Users,
+    Icon: Users,
     title: "ליווי משפחות שכולות",
     subtitle: "הנצחה וחיבוק מתמיד",
-    description: `משפחות הנופלים הן חלק בלתי נפרד מקהילת הסיירת. אנו שומרים על
-    קשר שוטף לאורך כל השנה, נוכחים בטקסי האזכרה ובאירועים המשפחתיים,
-    ומבטיחים שהנופלים ומשפחותיהם לא יישכחו לעולם.`,
-    image: "https://picsum.photos/seed/activity3/700/400",
+    color: "from-gray-800 to-gray-600",
+    description:
+      "משפחות הנופלים הן חלק בלתי נפרד מקהילת הסיירת. אנו שומרים על קשר שוטף לאורך כל השנה, נוכחים בטקסי האזכרה ובאירועים המשפחתיים, ומבטיחים שהנופלים ומשפחותיהם לא יישכחו לעולם.",
     highlights: [
       "קשר שוטף עם המשפחות",
       "נוכחות בטקסי אזכרה",
@@ -61,13 +56,12 @@ const activities = [
   },
   {
     id: "community",
-    icon: Star,
+    Icon: Star,
     title: "פעילות קהילתית",
     subtitle: "הסיירת לא נגמרת בשחרור",
-    description: `הקהילה היא ליבת הפעילות שלנו. אנו מארגנים מפגשים, כנסים, ריצות
-    וסיורים שמחזקים את הקשרים בין הבוגרים. בין אם זה ערב בוגרים, טיול
-    שנתי, או גיבוש ספורטיבי — כולם ממשיכים את רוח הסיירת בחיים האזרחיים.`,
-    image: "https://picsum.photos/seed/activity4/700/400",
+    color: "from-green-mid to-green-light",
+    description:
+      "הקהילה היא ליבת הפעילות שלנו. אנו מארגנים מפגשים, כנסים, ריצות וסיורים שמחזקים את הקשרים בין הבוגרים. בין אם זה ערב בוגרים, טיול שנתי, או גיבוש ספורטיבי — כולם ממשיכים את רוח הסיירת בחיים האזרחיים.",
     highlights: [
       "מפגשי בוגרים תקופתיים",
       "טיולים וסיורים שנתיים",
@@ -89,7 +83,7 @@ export default function ActivitiesPage() {
         <div className="container-max">
           <div className="space-y-20">
             {activities.map((activity, index) => {
-              const Icon = activity.icon;
+              const { Icon } = activity;
               const isEven = index % 2 === 0;
               return (
                 <div
@@ -97,7 +91,8 @@ export default function ActivitiesPage() {
                   id={activity.id}
                   className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center scroll-mt-24"
                 >
-                  <div className={`${isEven ? "" : "lg:order-2"}`}>
+                  {/* Text */}
+                  <div className={isEven ? "" : "lg:order-2"}>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 rounded-xl bg-green-pale flex items-center justify-center">
                         <Icon size={24} className="text-green-dark" />
@@ -108,26 +103,37 @@ export default function ActivitiesPage() {
                       </div>
                     </div>
                     <div className="h-1 w-12 bg-green-mid rounded-full mb-6" />
-                    <p className="text-gray-600 leading-relaxed mb-6 text-base whitespace-pre-line">
-                      {activity.description}
-                    </p>
+                    <p className="text-gray-600 leading-relaxed mb-6 text-base">{activity.description}</p>
                     <ul className="space-y-2">
                       {activity.highlights.map((h) => (
                         <li key={h} className="flex items-center gap-2 text-sm text-gray-700">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-mid shrink-0" />
+                          <CheckCircle size={15} className="text-green-mid shrink-0" />
                           {h}
                         </li>
                       ))}
                     </ul>
                   </div>
-                  <div className={`${isEven ? "" : "lg:order-1"}`}>
-                    <Image
-                      src={activity.image}
-                      alt={activity.title}
-                      width={700}
-                      height={400}
-                      className="rounded-2xl shadow-lg object-cover w-full h-72 lg:h-80"
-                    />
+
+                  {/* Visual panel */}
+                  <div className={isEven ? "" : "lg:order-1"}>
+                    <div
+                      className={`rounded-2xl shadow-lg h-72 lg:h-80 bg-gradient-to-br ${activity.color} flex flex-col items-center justify-center gap-6 p-8`}
+                    >
+                      <div className="w-20 h-20 rounded-full bg-white/15 border-2 border-white/25 flex items-center justify-center">
+                        <Icon size={36} className="text-white" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-white font-rubik font-bold text-xl">{activity.title}</p>
+                        <p className="text-white/70 text-sm mt-1">{activity.subtitle}</p>
+                      </div>
+                      <div className="flex gap-2 flex-wrap justify-center">
+                        {activity.highlights.slice(0, 2).map((h) => (
+                          <span key={h} className="bg-white/15 text-white text-xs px-3 py-1 rounded-full">
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -137,10 +143,7 @@ export default function ActivitiesPage() {
       </section>
 
       {/* CTA */}
-      <section
-        className="section-padding hero-texture"
-        style={{ backgroundColor: "#2d5a27" }}
-      >
+      <section className="section-padding hero-texture" style={{ backgroundColor: "#2d5a27" }}>
         <div className="container-max text-center">
           <h2 className="font-rubik font-black text-3xl text-white mb-4">רוצה לעזור?</h2>
           <p className="text-gray-200 mb-8 max-w-xl mx-auto">

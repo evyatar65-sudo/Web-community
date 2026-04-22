@@ -76,6 +76,25 @@ export interface Benefit {
   is_active: boolean;
 }
 
+export interface Donation {
+  id: string;
+  user_id?: string;
+  amount: number;
+  is_recurring: boolean;
+  status: "pending" | "completed" | "failed";
+  created_at: string;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface Fallen {
   id: string;
   name: string;

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Facebook, Instagram, MessageCircle, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Instagram, MessageCircle, Mail, MapPin } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -104,12 +104,6 @@ export default function Footer() {
               <li className="flex items-start gap-2 text-sm text-gray-400">
                 <MapPin size={15} className="shrink-0 mt-0.5 text-green-light" />
                 תל אביב, ישראל
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-400">
-                <Phone size={15} className="shrink-0 text-green-light" />
-                <a href="tel:+972-X-XXXXXXX" className="hover:text-green-light transition-colors">
-                  03-XXXXXXX
-                </a>
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-400">
                 <Mail size={15} className="shrink-0 text-green-light" />

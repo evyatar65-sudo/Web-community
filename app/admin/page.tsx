@@ -1,21 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift, Flame } from "lucide-react";
+import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift, Flame, Heart, Mail, MailOpen } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, Event, ArchiveItem, Benefit, Fallen } from "@/lib/types";
+import type { Profile, Event, ArchiveItem, Benefit, Fallen, Donation, ContactMessage } from "@/lib/types";
 
-type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits" | "fallen";
+type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits" | "fallen" | "messages";
 
 const TAB_ICONS = {
   users: Users,
   events: Calendar,
   archive: ImageIcon,
   members: MessageSquare,
-  donations: Shield,
+  donations: Heart,
   benefits: Gift,
   fallen: Flame,
+  messages: Mail,
 };
 
 const TAB_LABELS: Record<AdminTab, string> = {
@@ -26,6 +27,7 @@ const TAB_LABELS: Record<AdminTab, string> = {
   donations: "תרומות",
   benefits: "הטבות",
   fallen: "הנצחה",
+  messages: "הודעות",
 };
 
 function PendingUsersTab() {
@@ -593,9 +595,28 @@ function AllMembersTab() {
 }
 
 function DonationsTab() {
-  const mockStats = { total: "₪127,450", monthly: "₪12,300", donors: 84 };
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const supabase = createClient();
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from("donations")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setDonations(data || []);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const total = donations.reduce((s, d) => s + d.amount, 0);
+  const thisMonth = donations
+    .filter((d) => new Date(d.created_at).getMonth() === new Date().getMonth())
+    .reduce((s, d) => s + d.amount, 0);
+  const uniqueDonors = new Set(donations.filter((d) => d.user_id).map((d) => d.user_id)).size;
 
   async function handleExportMembers() {
     setExporting(true);
@@ -604,27 +625,10 @@ function DonationsTab() {
         .from("profiles")
         .select("full_name,personal_id,service_years,role_in_unit,phone,current_city,profession,status,role,created_at")
         .order("created_at", { ascending: false });
-
       if (!data || data.length === 0) return;
-
       const headers = ["שם מלא", "מספר אישי", "שנות שירות", "תפקיד", "טלפון", "עיר", "עיסוק", "סטטוס", "תפקיד מערכת", "נרשם"];
-      const rows = data.map((m) => [
-        m.full_name,
-        m.personal_id || "",
-        m.service_years || "",
-        m.role_in_unit || "",
-        m.phone || "",
-        m.current_city || "",
-        m.profession || "",
-        m.status,
-        m.role,
-        new Date(m.created_at).toLocaleDateString("he-IL"),
-      ]);
-
-      const csv = [headers, ...rows]
-        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-
+      const rows = data.map((m) => [m.full_name, m.personal_id || "", m.service_years || "", m.role_in_unit || "", m.phone || "", m.current_city || "", m.profession || "", m.status, m.role, new Date(m.created_at).toLocaleDateString("he-IL")]);
+      const csv = [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
       const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -641,9 +645,9 @@ function DonationsTab() {
     <div>
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          { label: "סה\"כ תרומות", value: mockStats.total },
-          { label: "החודש", value: mockStats.monthly },
-          { label: "תורמים", value: mockStats.donors },
+          { label: "סה\"כ", value: `₪${total.toLocaleString()}` },
+          { label: "החודש", value: `₪${thisMonth.toLocaleString()}` },
+          { label: "תורמים", value: uniqueDonors || donations.length },
         ].map((s) => (
           <div key={s.label} className="bg-green-pale rounded-xl p-5 text-center">
             <div className="font-rubik font-bold text-2xl text-green-dark mb-1">{s.value}</div>
@@ -651,20 +655,155 @@ function DonationsTab() {
           </div>
         ))}
       </div>
-      <div className="flex gap-3">
-        <button
-          onClick={handleExportMembers}
-          disabled={exporting}
-          className="flex items-center gap-2 bg-green-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60"
-        >
-          {exporting ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Download size={14} />
+
+      {loading ? (
+        <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>
+      ) : donations.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">אין תרומות עדיין</p>
+      ) : (
+        <div className="overflow-x-auto mb-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="text-right py-3 px-3 font-medium text-gray-600">תאריך</th>
+                <th className="text-right py-3 px-3 font-medium text-gray-600">סכום</th>
+                <th className="text-right py-3 px-3 font-medium text-gray-600">סוג</th>
+                <th className="text-right py-3 px-3 font-medium text-gray-600">סטטוס</th>
+              </tr>
+            </thead>
+            <tbody>
+              {donations.map((d) => (
+                <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                  <td className="py-2.5 px-3 text-gray-500 text-xs">{new Date(d.created_at).toLocaleDateString("he-IL")}</td>
+                  <td className="py-2.5 px-3 font-bold text-green-dark">₪{d.amount.toLocaleString()}</td>
+                  <td className="py-2.5 px-3 text-gray-500">{d.is_recurring ? "חודשית" : "חד פעמית"}</td>
+                  <td className="py-2.5 px-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      d.status === "completed" ? "bg-green-pale text-green-dark" :
+                      d.status === "failed" ? "bg-red-100 text-red-600" :
+                      "bg-yellow-100 text-yellow-700"
+                    }`}>
+                      {d.status === "completed" ? "הושלם" : d.status === "failed" ? "נכשל" : "ממתין"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <button
+        onClick={handleExportMembers}
+        disabled={exporting}
+        className="flex items-center gap-2 bg-green-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60"
+      >
+        {exporting ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download size={14} />}
+        ייצוא חברים CSV
+      </button>
+    </div>
+  );
+}
+
+function MessagesTab() {
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await supabase
+      .from("contact_messages")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setMessages(data || []);
+    setLoading(false);
+  }
+
+  async function markRead(id: string, isRead: boolean) {
+    await supabase.from("contact_messages").update({ is_read: isRead }).eq("id", id);
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, is_read: isRead } : m)));
+  }
+
+  async function deleteMessage(id: string) {
+    if (!confirm("למחוק הודעה זו?")) return;
+    await supabase.from("contact_messages").delete().eq("id", id);
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (open === id) setOpen(null);
+  }
+
+  const unread = messages.filter((m) => !m.is_read).length;
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-rubik font-bold text-lg">
+          הודעות ({messages.length})
+          {unread > 0 && (
+            <span className="mr-2 bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center">{unread}</span>
           )}
-          ייצוא חברים CSV
-        </button>
+        </h3>
       </div>
+      {messages.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">אין הודעות</p>
+      ) : (
+        <div className="space-y-2">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`rounded-xl border transition-colors ${msg.is_read ? "border-gray-100 bg-white" : "border-green-light/30 bg-green-pale/30"}`}>
+              <div
+                className="flex items-center justify-between p-4 cursor-pointer"
+                onClick={() => setOpen(open === msg.id ? null : msg.id)}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${msg.is_read ? "bg-gray-100" : "bg-green-pale"}`}>
+                    {msg.is_read ? <MailOpen size={15} className="text-gray-400" /> : <Mail size={15} className="text-green-dark" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`font-medium truncate ${msg.is_read ? "text-gray-600" : "text-gray-900"}`}>{msg.subject}</p>
+                    <p className="text-xs text-gray-400">{msg.name} · {msg.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-400">{new Date(msg.created_at).toLocaleDateString("he-IL")}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); markRead(msg.id, !msg.is_read); }}
+                    className="p-1.5 text-gray-400 hover:text-green-dark hover:bg-green-pale rounded transition-colors"
+                    title={msg.is_read ? "סמן כלא נקרא" : "סמן כנקרא"}
+                  >
+                    {msg.is_read ? <Mail size={14} /> : <MailOpen size={14} />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id); }}
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    title="מחק"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+              {open === msg.id && (
+                <div className="px-4 pb-4 border-t border-gray-100 mt-1 pt-3">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{msg.message}</p>
+                  <a
+                    href={`mailto:${msg.email}?subject=Re: ${encodeURIComponent(msg.subject)}`}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-green-dark hover:underline"
+                    onClick={() => markRead(msg.id, true)}
+                  >
+                    <Mail size={12} />
+                    השב למייל
+                  </a>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1102,13 +1241,14 @@ function BenefitsTab() {
 
 function AdminContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
-  const [stats, setStats] = useState({ pending: 0, approved: 0, total: 0, pendingArchive: 0 });
+  const [stats, setStats] = useState({ pending: 0, approved: 0, total: 0, pendingArchive: 0, unreadMessages: 0 });
   const supabase = createClient();
 
   async function loadStats() {
-    const [{ data: profiles }, { count: archiveCount }] = await Promise.all([
+    const [{ data: profiles }, { count: archiveCount }, { count: msgCount }] = await Promise.all([
       supabase.from("profiles").select("status"),
       supabase.from("archive_items").select("*", { count: "exact", head: true }).eq("is_approved", false),
+      supabase.from("contact_messages").select("*", { count: "exact", head: true }).eq("is_read", false),
     ]);
     if (profiles) {
       setStats({
@@ -1116,6 +1256,7 @@ function AdminContent() {
         approved: profiles.filter((p) => p.status === "approved").length,
         total: profiles.length,
         pendingArchive: archiveCount || 0,
+        unreadMessages: msgCount || 0,
       });
     }
   }
@@ -1134,6 +1275,11 @@ function AdminContent() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "archive_items" },
+        () => { loadStats(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "contact_messages" },
         () => { loadStats(); }
       )
       .subscribe();
@@ -1199,6 +1345,11 @@ function AdminContent() {
                     {stats.pendingArchive}
                   </span>
                 )}
+                {tab === "messages" && stats.unreadMessages > 0 && (
+                  <span className="bg-red-500 text-white text-xs font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {stats.unreadMessages}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1232,6 +1383,11 @@ function AdminContent() {
                         {stats.pendingArchive}
                       </span>
                     )}
+                    {tab === "messages" && stats.unreadMessages > 0 && (
+                      <span className="mr-auto bg-red-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                        {stats.unreadMessages}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -1250,6 +1406,7 @@ function AdminContent() {
             {activeTab === "donations" && <DonationsTab />}
             {activeTab === "benefits" && <BenefitsTab />}
             {activeTab === "fallen" && <FallenTab />}
+            {activeTab === "messages" && <MessagesTab />}
           </div>
         </div>
       </div>

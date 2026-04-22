@@ -165,9 +165,7 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <div className="font-rubik font-bold text-gray-900 mb-1">טלפון</div>
-                    <a href="tel:03-XXXXXXX" className="text-green-dark font-medium text-sm hover:underline">
-                      03-XXXXXXX
-                    </a>
+                    <p className="text-green-dark font-medium text-sm">יצירת קשר דרך הטופס</p>
                     <p className="text-gray-400 text-xs mt-0.5">ימים א׳–ה׳, 9:00–17:00</p>
                   </div>
                 </div>

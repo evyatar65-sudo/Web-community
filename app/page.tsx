@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   Heart,
   Users,
@@ -16,11 +15,7 @@ import AnimatedStats from "@/components/ui/AnimatedStats";
 import { createClient } from "@/lib/supabase/server";
 import type { Event } from "@/lib/types";
 
-const stats = [
-  { value: "14+", label: "שנות פעילות" },
-  { value: "500+", label: "בוגרים רשומים" },
-  { value: "30+", label: "מבצעי זיכרון" },
-];
+const FALLBACK_MEMBER_COUNT = 500;
 
 const activities = [
   {
@@ -46,11 +41,11 @@ const activities = [
 ];
 
 const partners = [
-  { seed: "partner1", name: "שותף 1" },
-  { seed: "partner2", name: "שותף 2" },
-  { seed: "partner3", name: "שותף 3" },
-  { seed: "partner4", name: "שותף 4" },
-  { seed: "partner5", name: "שותף 5" },
+  "משרד הביטחון",
+  "קרן רש\"י",
+  "עיריית תל אביב",
+  'אגף שיקום נכי צה"ל',
+  "ג\'וינט ישראל",
 ];
 
 const FALLBACK_EVENTS: Event[] = [
@@ -83,23 +78,37 @@ const FALLBACK_EVENTS: Event[] = [
   },
 ];
 
-async function getUpcomingEvents(): Promise<Event[]> {
+async function getPageData(): Promise<{ events: Event[]; memberCount: number }> {
   try {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("events")
-      .select("*")
-      .gte("date", new Date().toISOString())
-      .order("date", { ascending: true })
-      .limit(3);
-    return data && data.length > 0 ? data : FALLBACK_EVENTS;
+    const [{ data: eventsData }, { count }] = await Promise.all([
+      supabase
+        .from("events")
+        .select("*")
+        .gte("date", new Date().toISOString())
+        .order("date", { ascending: true })
+        .limit(3),
+      supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "approved"),
+    ]);
+    return {
+      events: eventsData && eventsData.length > 0 ? eventsData : FALLBACK_EVENTS,
+      memberCount: count ?? FALLBACK_MEMBER_COUNT,
+    };
   } catch {
-    return FALLBACK_EVENTS;
+    return { events: FALLBACK_EVENTS, memberCount: FALLBACK_MEMBER_COUNT };
   }
 }
 
 export default async function HomePage() {
-  const upcomingEvents = await getUpcomingEvents();
+  const { events: upcomingEvents, memberCount } = await getPageData();
+  const stats = [
+    { value: "14+", label: "שנות פעילות" },
+    { value: `${memberCount}+`, label: "בוגרים רשומים" },
+    { value: "30+", label: "מבצעי זיכרון" },
+  ];
   return (
     <>
       {/* Hero */}
@@ -356,16 +365,14 @@ export default async function HomePage() {
           <p className="text-center text-gray-400 text-sm font-medium mb-8 tracking-wider uppercase">
             שותפים ותומכים
           </p>
-          <div className="flex items-center justify-center flex-wrap gap-8 opacity-50 grayscale hover:opacity-70 transition-opacity">
-            {partners.map((p) => (
-              <Image
-                key={p.seed}
-                src={`https://picsum.photos/seed/${p.seed}/120/40`}
-                alt={p.name}
-                width={120}
-                height={40}
-                className="object-contain h-10"
-              />
+          <div className="flex items-center justify-center flex-wrap gap-4">
+            {partners.map((name) => (
+              <div
+                key={name}
+                className="px-5 py-2.5 border border-gray-200 rounded-full text-gray-500 text-sm font-medium bg-gray-50 hover:border-green-mid hover:text-green-dark transition-colors"
+              >
+                {name}
+              </div>
             ))}
           </div>
         </div>
