@@ -203,11 +203,14 @@ export default function ContactPage() {
                 </div>
               </div>
 
-              {/* Map placeholder */}
-              <div className="rounded-xl overflow-hidden bg-gray-200 h-52 flex items-center justify-center text-gray-400 text-sm border border-gray-200">
+              {/* Location card */}
+              <div className="rounded-xl overflow-hidden bg-gradient-to-br from-green-dark to-green-darkest h-52 flex flex-col items-center justify-center gap-3 p-6">
+                <div className="w-14 h-14 bg-white/15 border-2 border-white/25 rounded-full flex items-center justify-center">
+                  <MapPin size={26} className="text-white" />
+                </div>
                 <div className="text-center">
-                  <MapPin size={32} className="mx-auto mb-2 opacity-40" />
-                  מפה תוצג כאן (Google Maps)
+                  <p className="text-white font-rubik font-bold text-lg">רחוב הרצל 1</p>
+                  <p className="text-green-light text-sm mt-0.5">תל אביב, ישראל</p>
                 </div>
               </div>
             </div>

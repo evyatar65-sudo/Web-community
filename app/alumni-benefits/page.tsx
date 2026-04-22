@@ -1,43 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, Briefcase, Users, GraduationCap, Calendar, Home } from "lucide-react";
+import { Briefcase, Users, GraduationCap, Calendar, Home, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import PageHero from "@/components/ui/PageHero";
 import SectionTitle from "@/components/ui/SectionTitle";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
-import type { Benefit } from "@/lib/types";
+import type { Benefit, Job, AcademicResource } from "@/lib/types";
 
 const MOCK_BENEFITS: Benefit[] = [
-  { id: "1", company: "ביט — שירותי בנקאות", description: "הנחה של 20% בעמלות", discount_details: "הנחה של 20% בעמלות", is_active: true },
-  { id: "2", company: "WeWork ישראל", description: "חצי מחיר חודשי ראשון", discount_details: "חצי מחיר חודשי ראשון", is_active: true },
-  { id: "3", company: "מכון כושר — ספורטלייף", description: "הנחה של 30%", discount_details: "הנחה של 30%", is_active: true },
-  { id: "4", company: "כלל ביטוח", description: "תוכנית ביטוח מותאמת לוותיקים", discount_details: "תוכנית ביטוח מותאמת לוותיקים", is_active: true },
-  { id: "5", company: "אורט — אקדמיה", description: "מלגה מיוחדת לבוגרים", discount_details: "מלגה מיוחדת לבוגרים", is_active: true },
-  { id: "6", company: "משרד עורכי דין מילמן", description: "ייעוץ משפטי חינם שעה ראשונה", discount_details: "ייעוץ משפטי חינם שעה ראשונה", is_active: true },
+  { id: "1", company: "ביט — שירותי בנקאות", discount_details: "הנחה של 20% בעמלות", category: "פיננסי", is_active: true },
+  { id: "2", company: "WeWork ישראל", discount_details: "חצי מחיר חודשי ראשון", category: "עבודה", is_active: true },
+  { id: "3", company: "מכון כושר — ספורטלייף", discount_details: "הנחה של 30%", category: "בריאות", is_active: true },
+  { id: "4", company: "כלל ביטוח", discount_details: "תוכנית ביטוח מותאמת לוותיקים", category: "ביטוח", is_active: true },
+  { id: "5", company: "אורט — אקדמיה", discount_details: "מלגה מיוחדת לבוגרים", category: "אקדמיה", is_active: true },
+  { id: "6", company: "משרד עורכי דין מילמן", discount_details: "ייעוץ משפטי חינם שעה ראשונה", category: "משפטי", is_active: true },
 ];
 
-const MOCK_CATEGORIES: Record<string, string> = {
-  "ביט — שירותי בנקאות": "פיננסי",
-  "WeWork ישראל": "עבודה",
-  "מכון כושר — ספורטלייף": "בריאות",
-  "כלל ביטוח": "ביטוח",
-  "אורט — אקדמיה": "אקדמיה",
-  "משרד עורכי דין מילמן": "משפטי",
-};
-
-const jobs = [
-  { title: "מנהל אבטחה", company: "בנק לאומי", type: "משרה מלאה" },
-  { title: "מדריך שטח", company: "ארגון גיבוש", type: "פרילנס" },
-  { title: "מנהל פרויקטים", company: "תעשייה אווירית", type: "משרה מלאה" },
-  { title: "יועץ בטחוני", company: "חברת יעוץ פרטית", type: "חלקי" },
+const MOCK_JOBS: Job[] = [
+  { id: "1", title: "מנהל אבטחה", company: "בנק לאומי", type: "משרה מלאה", is_active: true, created_at: "" },
+  { id: "2", title: "מדריך שטח", company: "ארגון גיבוש", type: "פרילנס", is_active: true, created_at: "" },
+  { id: "3", title: "מנהל פרויקטים", company: "תעשייה אווירית", type: "משרה מלאה", is_active: true, created_at: "" },
+  { id: "4", title: "יועץ בטחוני", company: "חברת יעוץ פרטית", type: "חלקי", is_active: true, created_at: "" },
 ];
 
-const academicResources = [
-  { title: "מלגת בוגרי לחימה — האוניברסיטה העברית", amount: "₪5,000 לשנה", deadline: "31.3 בכל שנה" },
-  { title: "קורס MBA מוזל — IDC", amount: "הנחה 15%", deadline: "מתמשך" },
-  { title: 'מסלול מזורז לתעודת הוראה — מכון מופ"ת', amount: "הנחה 25%", deadline: "01.09.2025" },
+const MOCK_ACADEMIC: AcademicResource[] = [
+  { id: "1", title: "מלגת בוגרי לחימה — האוניברסיטה העברית", amount: "₪5,000 לשנה", deadline: "31.3 בכל שנה", is_active: true, created_at: "" },
+  { id: "2", title: "קורס MBA מוזל — IDC", amount: "הנחה 15%", deadline: "מתמשך", is_active: true, created_at: "" },
+  { id: "3", title: 'מסלול מזורז לתעודת הוראה — מכון מופ"ת', amount: "הנחה 25%", deadline: "01.09.2026", is_active: true, created_at: "" },
 ];
 
 function BenefitSkeleton() {
@@ -53,22 +44,41 @@ function BenefitSkeleton() {
   );
 }
 
+function RowSkeleton() {
+  return (
+    <div className="card p-5 flex items-center gap-4 animate-pulse">
+      <div className="w-11 h-11 bg-gray-100 rounded-lg shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-40 bg-gray-200 rounded" />
+        <div className="h-3 w-28 bg-gray-100 rounded" />
+      </div>
+      <div className="h-4 w-16 bg-gray-100 rounded-full" />
+    </div>
+  );
+}
+
 function BenefitsContent() {
   const [benefits, setBenefits] = useState<Benefit[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [academic, setAcademic] = useState<AcademicResource[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await supabase
-          .from("benefits")
-          .select("*")
-          .eq("is_active", true)
-          .order("company");
-        setBenefits(data && data.length > 0 ? data : MOCK_BENEFITS);
+        const [{ data: b }, { data: j }, { data: a }] = await Promise.all([
+          supabase.from("benefits").select("*").eq("is_active", true).order("company"),
+          supabase.from("jobs").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+          supabase.from("academic_resources").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+        ]);
+        setBenefits(b && b.length > 0 ? b : MOCK_BENEFITS);
+        setJobs(j && j.length > 0 ? j : MOCK_JOBS);
+        setAcademic(a && a.length > 0 ? a : MOCK_ACADEMIC);
       } catch {
         setBenefits(MOCK_BENEFITS);
+        setJobs(MOCK_JOBS);
+        setAcademic(MOCK_ACADEMIC);
       } finally {
         setLoading(false);
       }
@@ -78,52 +88,39 @@ function BenefitsContent() {
 
   return (
     <>
-      <PageHero
-        title="קידום בוגרים"
-        subtitle="מגוון שירותים, הטבות ומשאבים בלעדיים לחברי העמותה"
-      />
+      <PageHero title="קידום בוגרים" subtitle="מגוון שירותים, הטבות ומשאבים בלעדיים לחברי העמותה" />
 
       {/* Benefits */}
       <section className="section-padding bg-white" id="benefits">
         <div className="container-max">
-          <SectionTitle
-            title="הטבות ושותפויות"
-            subtitle={'הנחות ושירותים מיוחדים לבוגרי סיירת נח"ל'}
-          />
+          <SectionTitle title="הטבות ושותפויות" subtitle={'הנחות ושירותים מיוחדים לבוגרי סיירת נח"ל'} />
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, i) => <BenefitSkeleton key={i} />)}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {benefits.map((b) => {
-                const category = MOCK_CATEGORIES[b.company] || "כללי";
-                return (
-                  <div key={b.id} className="card-green-accent p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <h3 className="font-rubik font-bold text-gray-900">{b.company}</h3>
+              {benefits.map((b) => (
+                <div key={b.id} className="card-green-accent p-5 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <h3 className="font-rubik font-bold text-gray-900">{b.company}</h3>
+                    {b.category && (
                       <span className="text-xs bg-green-pale text-green-dark px-2 py-0.5 rounded-full whitespace-nowrap">
-                        {category}
+                        {b.category}
                       </span>
-                    </div>
-                    <p className="text-green-mid font-semibold text-sm mb-4">
-                      {b.discount_details || b.description}
-                    </p>
-                    {b.link ? (
-                      <a
-                        href={b.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-green-dark font-medium hover:underline"
-                      >
-                        לפרטים ולמימוש ←
-                      </a>
-                    ) : (
-                      <span className="text-xs text-gray-400 font-medium">צור קשר עם העמותה</span>
                     )}
                   </div>
-                );
-              })}
+                  <p className="text-green-mid font-semibold text-sm mb-4">{b.discount_details || b.description}</p>
+                  {b.link ? (
+                    <a href={b.link} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-green-dark font-medium hover:underline">
+                      לפרטים ולמימוש <ExternalLink size={11} />
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400 font-medium">צור קשר עם העמותה</span>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -134,22 +131,18 @@ function BenefitsContent() {
         <div className="container-max">
           <SectionTitle title="נטוורקינג" subtitle="התחבר עם הקהילה — הרשת שלך חזקה ממה שחשבת" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
-            <Link
-              href="/members"
-              className="bg-white rounded-2xl p-6 hover:shadow-md transition-shadow flex items-center gap-4"
-            >
+            <Link href="/members"
+              className="bg-white rounded-2xl p-6 hover:shadow-md transition-shadow flex items-center gap-4">
               <div className="w-12 h-12 bg-green-dark rounded-xl flex items-center justify-center shrink-0">
                 <Users size={22} className="text-white" />
               </div>
               <div>
                 <h3 className="font-rubik font-bold text-gray-900">מאגר בוגרים</h3>
-                <p className="text-sm text-gray-500">500+ חברים — חפש וצור קשר</p>
+                <p className="text-sm text-gray-500">חפש וצור קשר</p>
               </div>
             </Link>
-            <Link
-              href="/forum"
-              className="bg-white rounded-2xl p-6 hover:shadow-md transition-shadow flex items-center gap-4"
-            >
+            <Link href="/forum"
+              className="bg-white rounded-2xl p-6 hover:shadow-md transition-shadow flex items-center gap-4">
               <div className="w-12 h-12 bg-green-dark rounded-xl flex items-center justify-center shrink-0">
                 <Users size={22} className="text-white" />
               </div>
@@ -167,30 +160,36 @@ function BenefitsContent() {
         <div className="container-max">
           <SectionTitle title="לוח תעסוקה" subtitle="הזדמנויות עבודה בקהילת הבוגרים ומחוצה לה" />
           <div className="max-w-3xl mx-auto space-y-4">
-            {jobs.map((job) => (
-              <div key={job.title} className="card p-5 flex items-center justify-between gap-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
-                    <Briefcase size={20} className="text-green-dark" />
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => <RowSkeleton key={i} />)
+            ) : (
+              jobs.map((job) => (
+                <div key={job.id} className="card p-5 flex items-center justify-between gap-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+                      <Briefcase size={20} className="text-green-dark" />
+                    </div>
+                    <div>
+                      <h3 className="font-rubik font-bold text-gray-900">{job.title}</h3>
+                      <p className="text-sm text-gray-500">{job.company}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-rubik font-bold text-gray-900">{job.title}</h3>
-                    <p className="text-sm text-gray-500">{job.company}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap">{job.type}</span>
+                    {job.link ? (
+                      <a href={job.link} target="_blank" rel="noopener noreferrer"
+                        className="text-sm font-semibold text-green-dark hover:text-green-mid transition-colors whitespace-nowrap">
+                        פרטים ←
+                      </a>
+                    ) : (
+                      <Link href="/forum" className="text-sm font-semibold text-green-dark hover:text-green-mid transition-colors whitespace-nowrap">
+                        פרטים ←
+                      </Link>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full whitespace-nowrap">
-                    {job.type}
-                  </span>
-                  <Link
-                    href="/forum"
-                    className="text-sm font-semibold text-green-dark hover:text-green-mid transition-colors whitespace-nowrap"
-                  >
-                    פרטים ←
-                  </Link>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -198,31 +197,36 @@ function BenefitsContent() {
       {/* Academia */}
       <section className="section-padding bg-gray-light" id="academia">
         <div className="container-max">
-          <SectionTitle
-            title="אקדמיה ומלגות"
-            subtitle="הזדמנויות לימודיות מועדפות לבוגרי הסיירת"
-          />
+          <SectionTitle title="אקדמיה ומלגות" subtitle="הזדמנויות לימודיות מועדפות לבוגרי הסיירת" />
           <div className="max-w-3xl mx-auto space-y-4">
-            {academicResources.map((r) => (
-              <div key={r.title} className="bg-white rounded-xl p-5 shadow-sm flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
-                    <GraduationCap size={20} className="text-green-dark" />
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => <RowSkeleton key={i} />)
+            ) : (
+              academic.map((r) => (
+                <div key={r.id} className="bg-white rounded-xl p-5 shadow-sm flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+                      <GraduationCap size={20} className="text-green-dark" />
+                    </div>
+                    <div>
+                      <h3 className="font-rubik font-bold text-gray-900 text-base">{r.title}</h3>
+                      <p className="text-green-mid font-semibold text-sm">{r.amount}</p>
+                      {r.deadline && <p className="text-gray-400 text-xs">הגשה עד: {r.deadline}</p>}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-rubik font-bold text-gray-900 text-base">{r.title}</h3>
-                    <p className="text-green-mid font-semibold text-sm">{r.amount}</p>
-                    <p className="text-gray-400 text-xs">הגשה עד: {r.deadline}</p>
-                  </div>
+                  {r.link ? (
+                    <a href={r.link} target="_blank" rel="noopener noreferrer"
+                      className="text-sm font-semibold text-green-dark hover:underline whitespace-nowrap">
+                      למידע נוסף
+                    </a>
+                  ) : (
+                    <Link href="/contact" className="text-sm font-semibold text-green-dark hover:underline whitespace-nowrap">
+                      למידע נוסף
+                    </Link>
+                  )}
                 </div>
-                <Link
-                  href="/contact"
-                  className="text-sm font-semibold text-green-dark hover:underline whitespace-nowrap"
-                >
-                  למידע נוסף
-                </Link>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -233,22 +237,16 @@ function BenefitsContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <SectionTitle title="כנסים ואירועים" centered={false} />
-              <p className="text-gray-600 mb-4">
-                הסיירת מארגנת כנסים מקצועיים, כנסי הייטק ואירועים חברתיים לאורך השנה.
-              </p>
-              <Link
-                href="/events"
-                className="inline-flex items-center gap-2 bg-green-dark text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-mid transition-colors text-sm"
-              >
+              <p className="text-gray-600 mb-4">הסיירת מארגנת כנסים מקצועיים, כנסי הייטק ואירועים חברתיים לאורך השנה.</p>
+              <Link href="/events"
+                className="inline-flex items-center gap-2 bg-green-dark text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-mid transition-colors text-sm">
                 <Calendar size={16} />
                 לוח האירועים
               </Link>
             </div>
             <div>
               <SectionTitle title="חזרה לשגרה" centered={false} />
-              <p className="text-gray-600 mb-4">
-                משאבים, מדריכים ואנשי קשר לתהליך המעבר לחיים האזרחיים.
-              </p>
+              <p className="text-gray-600 mb-4">משאבים, מדריכים ואנשי קשר לתהליך המעבר לחיים האזרחיים.</p>
               <div className="space-y-2">
                 {["מדריך לקבלת תגמולים", "ייעוץ פסיכולוגי חינמי", "הכשרות מקצועיות מסובסדות"].map((item) => (
                   <div key={item} className="flex items-center gap-2 text-sm text-gray-600">

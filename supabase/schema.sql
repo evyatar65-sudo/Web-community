@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS archive_items (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Note: run this migration if upgrading from an earlier schema version:
+-- ALTER TABLE benefits ADD COLUMN IF NOT EXISTS category TEXT;
+
 -- 7. Fallen (memorial)
 CREATE TABLE IF NOT EXISTS fallen (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -88,11 +91,42 @@ CREATE TABLE IF NOT EXISTS benefits (
   company TEXT NOT NULL,
   description TEXT,
   discount_details TEXT,
+  category TEXT,
   link TEXT,
   is_active BOOLEAN DEFAULT true
 );
 
--- 9. Donations (pledge tracking)
+-- 9. Jobs (alumni job board)
+CREATE TABLE IF NOT EXISTS jobs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  company TEXT NOT NULL,
+  type TEXT NOT NULL,
+  description TEXT,
+  link TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 10. Academic Resources
+CREATE TABLE IF NOT EXISTS academic_resources (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  amount TEXT NOT NULL,
+  deadline TEXT,
+  link TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 11. Newsletter Subscribers
+CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 12. Donations (pledge tracking)
 CREATE TABLE IF NOT EXISTS donations (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -123,8 +157,37 @@ ALTER TABLE forum_replies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE archive_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE benefits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fallen ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE academic_resources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
+
+-- JOBS policies
+CREATE POLICY "Approved members can view active jobs"
+  ON jobs FOR SELECT
+  USING (is_active = true AND EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved'));
+
+CREATE POLICY "Admins can manage jobs"
+  ON jobs FOR ALL
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+-- ACADEMIC RESOURCES policies
+CREATE POLICY "Approved members can view active academic resources"
+  ON academic_resources FOR SELECT
+  USING (is_active = true AND EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.status = 'approved'));
+
+CREATE POLICY "Admins can manage academic resources"
+  ON academic_resources FOR ALL
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+-- NEWSLETTER policies
+CREATE POLICY "Anyone can subscribe to newsletter"
+  ON newsletter_subscribers FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can view newsletter subscribers"
+  ON newsletter_subscribers FOR SELECT
+  USING (EXISTS (SELECT 1 FROM profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
 
 -- PROFILES policies
 CREATE POLICY "Public profiles are viewable by approved members"

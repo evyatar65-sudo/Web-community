@@ -10,16 +10,16 @@ import type { ArchiveItem } from "@/lib/types";
 
 type ItemType = "photo" | "document" | "video" | "all";
 
-const MOCK_ARCHIVE: (ArchiveItem & { seed: string })[] = [
-  { id: "1", title: "תמונות אימון 1985", year: 1985, type: "photo", seed: "archive1", is_approved: true, created_at: "" },
-  { id: "2", title: "ריכוז מסמכים 1990", year: 1990, type: "document", seed: "archive2", is_approved: true, created_at: "" },
-  { id: "3", title: "מבצע ליטני — תיעוד", year: 1982, type: "photo", seed: "archive3", is_approved: true, created_at: "" },
-  { id: "4", title: "טקס סיום מחזור 45", year: 1995, type: "photo", seed: "archive4", is_approved: true, created_at: "" },
-  { id: "5", title: "גיבוש 1988 — צפון", year: 1988, type: "photo", seed: "archive5", is_approved: true, created_at: "" },
-  { id: "6", title: "כנס בוגרים 2005", year: 2005, type: "video", seed: "archive6", is_approved: true, created_at: "" },
-  { id: "7", title: "תצוגה אווירית 1979", year: 1979, type: "photo", seed: "archive7", is_approved: true, created_at: "" },
-  { id: "8", title: "פקודת מבצע", year: 1973, type: "document", seed: "archive8", is_approved: true, created_at: "" },
-  { id: "9", title: "מצעד יום העצמאות 2000", year: 2000, type: "photo", seed: "archive9", is_approved: true, created_at: "" },
+const MOCK_ARCHIVE: (ArchiveItem & { color: string })[] = [
+  { id: "1", title: "תמונות אימון 1985",       year: 1985, type: "photo",    color: "from-green-darkest to-green-dark",   is_approved: true, created_at: "" },
+  { id: "2", title: "ריכוז מסמכים 1990",       year: 1990, type: "document", color: "from-slate-700 to-slate-500",         is_approved: true, created_at: "" },
+  { id: "3", title: "מבצע ליטני — תיעוד",      year: 1982, type: "photo",    color: "from-stone-700 to-stone-500",         is_approved: true, created_at: "" },
+  { id: "4", title: "טקס סיום מחזור 45",        year: 1995, type: "photo",    color: "from-green-mid to-green-light",       is_approved: true, created_at: "" },
+  { id: "5", title: "גיבוש 1988 — צפון",        year: 1988, type: "photo",    color: "from-teal-800 to-teal-600",           is_approved: true, created_at: "" },
+  { id: "6", title: "כנס בוגרים 2005",          year: 2005, type: "video",    color: "from-purple-800 to-purple-600",       is_approved: true, created_at: "" },
+  { id: "7", title: "תצוגה אווירית 1979",       year: 1979, type: "photo",    color: "from-sky-800 to-sky-600",             is_approved: true, created_at: "" },
+  { id: "8", title: "פקודת מבצע",               year: 1973, type: "document", color: "from-amber-800 to-amber-600",         is_approved: true, created_at: "" },
+  { id: "9", title: "מצעד יום העצמאות 2000",    year: 2000, type: "photo",    color: "from-blue-800 to-blue-600",           is_approved: true, created_at: "" },
 ];
 
 const TYPE_ICONS = {
@@ -151,6 +151,7 @@ type DisplayItem = {
   year: number | null;
   type: "photo" | "document" | "video";
   imageUrl: string | null;
+  mockColor?: string;
 };
 
 function ArchiveContent() {
@@ -188,7 +189,8 @@ function ArchiveContent() {
             title: item.title,
             year: item.year || null,
             type: item.type,
-            imageUrl: `https://picsum.photos/seed/${item.seed}/300/300`,
+            imageUrl: null,
+            mockColor: item.color,
           }))
         );
       }
@@ -199,7 +201,8 @@ function ArchiveContent() {
           title: item.title,
           year: item.year || null,
           type: item.type,
-          imageUrl: `https://picsum.photos/seed/${item.seed}/300/300`,
+          imageUrl: null,
+          mockColor: item.color,
         }))
       );
     } finally {
@@ -302,28 +305,23 @@ function ArchiveContent() {
                             <ImageIcon size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         </>
+                      ) : item.mockColor ? (
+                        <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${item.mockColor}`}>
+                          <Icon size={32} className="text-white/60 mb-1" />
+                          <span className="text-white/40 text-xs">ללא תמונה</span>
+                        </div>
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gray-50">
                           <Icon size={32} className="text-gray-400 mb-2" />
                           {item.type === "video" && item.imageUrl && (
-                            <a
-                              href={item.imageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs text-green-dark underline mt-1"
-                            >
+                            <a href={item.imageUrl} target="_blank" rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()} className="text-xs text-green-dark underline mt-1">
                               פתח וידאו
                             </a>
                           )}
                           {item.type === "document" && item.imageUrl && (
-                            <a
-                              href={item.imageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs text-green-dark underline mt-1"
-                            >
+                            <a href={item.imageUrl} target="_blank" rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()} className="text-xs text-green-dark underline mt-1">
                               פתח מסמך
                             </a>
                           )}

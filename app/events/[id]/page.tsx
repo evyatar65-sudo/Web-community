@@ -230,11 +230,11 @@ function EventDetailContent() {
                   מיקום
                 </h2>
                 <p className="text-gray-700 mb-3">{event.location}</p>
-                <div className="h-40 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-sm border border-gray-200">
-                  <div className="text-center">
-                    <MapPin size={28} className="mx-auto mb-2 opacity-30" />
-                    מפה תוצג כאן
+                <div className="h-40 bg-gradient-to-br from-green-dark to-green-darkest rounded-xl flex flex-col items-center justify-center gap-2">
+                  <div className="w-10 h-10 bg-white/15 border-2 border-white/25 rounded-full flex items-center justify-center">
+                    <MapPin size={18} className="text-white" />
                   </div>
+                  <p className="text-white font-rubik font-semibold text-sm">{event.location}</p>
                 </div>
               </div>
             )}

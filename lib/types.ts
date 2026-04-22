@@ -72,8 +72,30 @@ export interface Benefit {
   company: string;
   description?: string;
   discount_details?: string;
+  category?: string;
   link?: string;
   is_active: boolean;
+}
+
+export interface Job {
+  id: string;
+  title: string;
+  company: string;
+  type: string;
+  description?: string;
+  link?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AcademicResource {
+  id: string;
+  title: string;
+  amount: string;
+  deadline?: string;
+  link?: string;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface Donation {

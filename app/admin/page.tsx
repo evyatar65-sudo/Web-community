@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift, Flame, Heart, Mail, MailOpen } from "lucide-react";
+import { CheckCircle, XCircle, Users, Calendar, MessageSquare, Download, Shield, Plus, X, Pencil, Trash2, Image as ImageIcon, Search, Gift, Flame, Heart, Mail, MailOpen, Briefcase, GraduationCap } from "lucide-react";
 import PrivateRoute from "@/components/ui/PrivateRoute";
 import { createClient } from "@/lib/supabase/client";
-import type { Profile, Event, ArchiveItem, Benefit, Fallen, Donation, ContactMessage } from "@/lib/types";
+import type { Profile, Event, ArchiveItem, Benefit, Fallen, Donation, ContactMessage, Job, AcademicResource } from "@/lib/types";
 
-type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits" | "fallen" | "messages";
+type AdminTab = "users" | "events" | "archive" | "members" | "donations" | "benefits" | "fallen" | "messages" | "jobs" | "academia";
 
 const TAB_ICONS = {
   users: Users,
@@ -17,6 +17,8 @@ const TAB_ICONS = {
   benefits: Gift,
   fallen: Flame,
   messages: Mail,
+  jobs: Briefcase,
+  academia: GraduationCap,
 };
 
 const TAB_LABELS: Record<AdminTab, string> = {
@@ -28,6 +30,8 @@ const TAB_LABELS: Record<AdminTab, string> = {
   benefits: "הטבות",
   fallen: "הנצחה",
   messages: "הודעות",
+  jobs: "לוח תעסוקה",
+  academia: "מלגות ואקדמיה",
 };
 
 function PendingUsersTab() {
@@ -1018,8 +1022,8 @@ function FallenTab() {
   );
 }
 
-type BenefitForm = { company: string; description: string; discount_details: string; link: string; is_active: boolean };
-const EMPTY_BENEFIT: BenefitForm = { company: "", description: "", discount_details: "", link: "", is_active: true };
+type BenefitForm = { company: string; description: string; discount_details: string; category: string; link: string; is_active: boolean };
+const EMPTY_BENEFIT: BenefitForm = { company: "", description: "", discount_details: "", category: "", link: "", is_active: true };
 
 function BenefitModal({
   initial,
@@ -1072,15 +1076,27 @@ function BenefitModal({
               placeholder='לדוגמה: הנחה 20% על כל המוצרים'
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור כללי</label>
-            <textarea
-              rows={2}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark resize-none"
-              placeholder="מידע נוסף על ההטבה..."
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">קטגוריה</label>
+              <input
+                type="text"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+                placeholder="פיננסי / בריאות / ..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">תיאור כללי</label>
+              <input
+                type="text"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark"
+                placeholder="מידע נוסף..."
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">קישור (לא חובה)</label>
@@ -1141,10 +1157,11 @@ function BenefitsTab() {
   }
 
   async function handleSave(form: BenefitForm) {
+    const payload = { company: form.company, description: form.description || null, discount_details: form.discount_details, category: form.category || null, link: form.link || null, is_active: form.is_active };
     if (editing) {
-      await supabase.from("benefits").update(form).eq("id", editing.id);
+      await supabase.from("benefits").update(payload).eq("id", editing.id);
     } else {
-      await supabase.from("benefits").insert(form);
+      await supabase.from("benefits").insert(payload);
     }
     await load();
     setShowModal(false);
@@ -1165,7 +1182,7 @@ function BenefitsTab() {
   }
 
   const modalInitial: BenefitForm = editing
-    ? { company: editing.company, description: editing.description || "", discount_details: editing.discount_details || "", link: editing.link || "", is_active: editing.is_active }
+    ? { company: editing.company, description: editing.description || "", discount_details: editing.discount_details || "", category: editing.category || "", link: editing.link || "", is_active: editing.is_active }
     : EMPTY_BENEFIT;
 
   if (loading) {
@@ -1228,6 +1245,332 @@ function BenefitsTab() {
                   className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                   title="מחק"
                 >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type JobForm = { title: string; company: string; type: string; description: string; link: string; is_active: boolean };
+const EMPTY_JOB: JobForm = { title: "", company: "", type: "משרה מלאה", description: "", link: "", is_active: true };
+
+function JobModal({ initial, onSave, onClose }: { initial: JobForm; onSave: (f: JobForm) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState<JobForm>(initial);
+  const [saving, setSaving] = useState(false);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  }
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-rubik font-bold text-lg text-gray-900">{initial.title ? "עריכת משרה" : "משרה חדשה"}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">כותרת המשרה *</label>
+            <input required type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="מנהל פרויקטים..." />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">חברה / ארגון *</label>
+              <input required type="text" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="שם החברה" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">סוג משרה *</label>
+              <select required value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark bg-white">
+                <option value="משרה מלאה">משרה מלאה</option>
+                <option value="חלקי">חלקי</option>
+                <option value="פרילנס">פרילנס</option>
+                <option value="התנדבות">התנדבות</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">תיאור</label>
+            <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark resize-none" placeholder="פרטים על המשרה..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">קישור למשרה (לא חובה)</label>
+            <input type="url" value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="https://..." dir="ltr" />
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 accent-green-dark" />
+            <span className="text-sm text-gray-700">משרה פעילה (מוצגת לחברים)</span>
+          </label>
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={saving}
+              className="flex-1 bg-green-dark text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60">
+              {saving ? "שומר..." : "שמור משרה"}
+            </button>
+            <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">ביטול</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function JobsTab() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Job | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await supabase.from("jobs").select("*").order("created_at", { ascending: false });
+    setJobs(data || []);
+    setLoading(false);
+  }
+
+  async function handleSave(form: JobForm) {
+    const payload = { title: form.title, company: form.company, type: form.type, description: form.description || null, link: form.link || null, is_active: form.is_active };
+    if (editing) {
+      await supabase.from("jobs").update(payload).eq("id", editing.id);
+    } else {
+      await supabase.from("jobs").insert(payload);
+    }
+    await load();
+    setShowModal(false);
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("למחוק משרה זו?")) return;
+    setDeleting(id);
+    await supabase.from("jobs").delete().eq("id", id);
+    setJobs((prev) => prev.filter((j) => j.id !== id));
+    setDeleting(null);
+  }
+
+  async function toggleActive(j: Job) {
+    await supabase.from("jobs").update({ is_active: !j.is_active }).eq("id", j.id);
+    setJobs((prev) => prev.map((x) => (x.id === j.id ? { ...x, is_active: !j.is_active } : x)));
+  }
+
+  const modalInitial: JobForm = editing
+    ? { title: editing.title, company: editing.company, type: editing.type, description: editing.description || "", link: editing.link || "", is_active: editing.is_active }
+    : EMPTY_JOB;
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      {showModal && (
+        <JobModal initial={modalInitial} onSave={handleSave} onClose={() => { setShowModal(false); setEditing(null); }} />
+      )}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-rubik font-bold text-lg">משרות ({jobs.length})</h3>
+        <button onClick={() => { setEditing(null); setShowModal(true); }}
+          className="flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors">
+          <Plus size={14} />
+          משרה חדשה
+        </button>
+      </div>
+      {jobs.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">אין משרות במערכת</p>
+      ) : (
+        <div className="space-y-3">
+          {jobs.map((j) => (
+            <div key={j.id} className="flex items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50/50">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+                  <Briefcase size={15} className="text-green-dark" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{j.title}</p>
+                  <p className="text-xs text-gray-400">{j.company} · {j.type}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => toggleActive(j)}
+                  className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${j.is_active ? "bg-green-pale text-green-dark hover:bg-green-light/20" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}>
+                  {j.is_active ? "פעיל" : "לא פעיל"}
+                </button>
+                <button onClick={() => { setEditing(j); setShowModal(true); }}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="ערוך">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => handleDelete(j.id)} disabled={deleting === j.id}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="מחק">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type AcademicForm = { title: string; amount: string; deadline: string; link: string; is_active: boolean };
+const EMPTY_ACADEMIC: AcademicForm = { title: "", amount: "", deadline: "", link: "", is_active: true };
+
+function AcademicModal({ initial, onSave, onClose }: { initial: AcademicForm; onSave: (f: AcademicForm) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState<AcademicForm>(initial);
+  const [saving, setSaving] = useState(false);
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  }
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-rubik font-bold text-lg text-gray-900">{initial.title ? "עריכת משאב" : "משאב אקדמי חדש"}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">כותרת *</label>
+            <input required type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="שם המלגה / התוכנית..." />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">סכום / הנחה *</label>
+              <input required type="text" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="₪5,000 / הנחה 20%..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">מועד הגשה</label>
+              <input type="text" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="31.3 / מתמשך..." />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">קישור (לא חובה)</label>
+            <input type="url" value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })}
+              className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-dark" placeholder="https://..." dir="ltr" />
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="w-4 h-4 accent-green-dark" />
+            <span className="text-sm text-gray-700">פעיל (מוצג לחברים)</span>
+          </label>
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={saving}
+              className="flex-1 bg-green-dark text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors disabled:opacity-60">
+              {saving ? "שומר..." : "שמור"}
+            </button>
+            <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-lg text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">ביטול</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AcademicTab() {
+  const [items, setItems] = useState<AcademicResource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<AcademicResource | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const { data } = await supabase.from("academic_resources").select("*").order("created_at", { ascending: false });
+    setItems(data || []);
+    setLoading(false);
+  }
+
+  async function handleSave(form: AcademicForm) {
+    const payload = { title: form.title, amount: form.amount, deadline: form.deadline || null, link: form.link || null, is_active: form.is_active };
+    if (editing) {
+      await supabase.from("academic_resources").update(payload).eq("id", editing.id);
+    } else {
+      await supabase.from("academic_resources").insert(payload);
+    }
+    await load();
+    setShowModal(false);
+    setEditing(null);
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("למחוק רשומה זו?")) return;
+    setDeleting(id);
+    await supabase.from("academic_resources").delete().eq("id", id);
+    setItems((prev) => prev.filter((r) => r.id !== id));
+    setDeleting(null);
+  }
+
+  async function toggleActive(r: AcademicResource) {
+    await supabase.from("academic_resources").update({ is_active: !r.is_active }).eq("id", r.id);
+    setItems((prev) => prev.map((x) => (x.id === r.id ? { ...x, is_active: !r.is_active } : x)));
+  }
+
+  const modalInitial: AcademicForm = editing
+    ? { title: editing.title, amount: editing.amount, deadline: editing.deadline || "", link: editing.link || "", is_active: editing.is_active }
+    : EMPTY_ACADEMIC;
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-green-mid border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  return (
+    <div>
+      {showModal && (
+        <AcademicModal initial={modalInitial} onSave={handleSave} onClose={() => { setShowModal(false); setEditing(null); }} />
+      )}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-rubik font-bold text-lg">משאבים אקדמיים ({items.length})</h3>
+        <button onClick={() => { setEditing(null); setShowModal(true); }}
+          className="flex items-center gap-2 bg-green-dark text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-mid transition-colors">
+          <Plus size={14} />
+          הוסף משאב
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">אין משאבים אקדמיים במערכת</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((r) => (
+            <div key={r.id} className="flex items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50/50">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 bg-green-pale rounded-lg flex items-center justify-center shrink-0">
+                  <GraduationCap size={15} className="text-green-dark" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{r.title}</p>
+                  <p className="text-xs text-gray-400">{r.amount}{r.deadline ? ` · עד ${r.deadline}` : ""}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => toggleActive(r)}
+                  className={`text-xs px-2 py-1 rounded-full font-medium transition-colors ${r.is_active ? "bg-green-pale text-green-dark hover:bg-green-light/20" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}>
+                  {r.is_active ? "פעיל" : "לא פעיל"}
+                </button>
+                <button onClick={() => { setEditing(r); setShowModal(true); }}
+                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="ערוך">
+                  <Pencil size={14} />
+                </button>
+                <button onClick={() => handleDelete(r.id)} disabled={deleting === r.id}
+                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="מחק">
                   <Trash2 size={14} />
                 </button>
               </div>
@@ -1407,6 +1750,8 @@ function AdminContent() {
             {activeTab === "benefits" && <BenefitsTab />}
             {activeTab === "fallen" && <FallenTab />}
             {activeTab === "messages" && <MessagesTab />}
+            {activeTab === "jobs" && <JobsTab />}
+            {activeTab === "academia" && <AcademicTab />}
           </div>
         </div>
       </div>
